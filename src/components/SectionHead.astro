@@ -1,0 +1,25 @@
+---
+import type { L } from '../content/products';
+
+interface Props {
+  kicker: string;
+  title: string;
+  lede?: string;
+  /** Identyfikator sekcji — do linków kotwicowych. */
+  id?: string;
+  /** Rozdziela nagłówek na dwie kolumny (tytuł | tekst). */
+  split?: boolean;
+  level?: 2 | 3;
+}
+
+const { kicker, title, lede, id, split = false, level = 2 } = Astro.props;
+const Tag = `h${level}` as 'h2' | 'h3';
+---
+
+<div class:list={['section-head', split && 'section-head--split']} id={id}>
+  <div>
+    <p class="kicker">{kicker}</p>
+    <Tag>{title}</Tag>
+  </div>
+  {lede && <p class="lede">{lede}</p>}
+</div>

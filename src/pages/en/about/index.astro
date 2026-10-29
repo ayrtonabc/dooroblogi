@@ -1,0 +1,23 @@
+---
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import AboutView from '../../../views/AboutView.astro';
+
+const locale = 'en' as const;
+const path = '/en/about/';
+
+const alternates = {
+  pl: '/o-nas/',
+  en: '/en/about/',
+  de: '/de/ueber-uns/',
+} as Partial<Record<typeof locale, string>>;
+---
+
+<BaseLayout
+  locale={locale}
+  path={path}
+  title="Oak trim workshop in Słonecznik, Poland"
+  description="Doors Obłogi is a natural oak workshop in Słonecznik near Olsztyn, Poland. We cut trim battens, oak battens and ready-made ceiling and wall panels."
+  alternates={alternates}
+>
+  <AboutView locale={locale} />
+</BaseLayout>

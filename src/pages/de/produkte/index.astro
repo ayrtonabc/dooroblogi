@@ -1,0 +1,23 @@
+---
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import CatalogView from '../../../views/CatalogView.astro';
+
+const locale = 'de' as const;
+const path = '/de/produkte/';
+
+const alternates = {
+  pl: '/produkty/',
+  en: '/en/products/',
+  de: '/de/produkte/',
+} as Partial<Record<typeof locale, string>>;
+---
+
+<BaseLayout
+  locale={locale}
+  path={path}
+  title="Eichen-Abschlussleisten und Eichenlamellen"
+  description="Vier Produkte aus einer natürlichen Eiche: geschnittene und geräucherte Abschlussleiste, Eichenlamelle 4–8 mm und fertige Decken- und Wandpaneele."
+  alternates={alternates}
+>
+  <CatalogView locale={locale} />
+</BaseLayout>

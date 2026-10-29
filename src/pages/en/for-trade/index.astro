@@ -1,0 +1,23 @@
+---
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import TradeView from '../../../views/TradeView.astro';
+
+const locale = 'en' as const;
+const path = '/en/for-trade/';
+
+const alternates = {
+  pl: '/dla-firm/',
+  en: '/en/for-trade/',
+  de: '/de/fuer-handwerk/',
+} as Partial<Record<typeof locale, string>>;
+---
+
+<BaseLayout
+  locale={locale}
+  path={path}
+  title="Oak battens for trade — wholesale oak trim"
+  description="Oak battens for trade: the same profile and wood selection across batches, a quote for the whole batch and courier delivery within Poland."
+  alternates={alternates}
+>
+  <TradeView locale={locale} />
+</BaseLayout>

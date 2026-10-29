@@ -1,0 +1,23 @@
+---
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import AboutView from '../../../views/AboutView.astro';
+
+const locale = 'de' as const;
+const path = '/de/ueber-uns/';
+
+const alternates = {
+  pl: '/o-nas/',
+  en: '/en/about/',
+  de: '/de/ueber-uns/',
+} as Partial<Record<typeof locale, string>>;
+---
+
+<BaseLayout
+  locale={locale}
+  path={path}
+  title="Eichenwerkstatt in Słonecznik, Polen"
+  description="Doors Obłogi ist eine Werkstatt für natürliche Eiche in Słonecznik bei Olsztyn. Wir schneiden Abschlussleisten, Lamellen und fertige Paneele."
+  alternates={alternates}
+>
+  <AboutView locale={locale} />
+</BaseLayout>

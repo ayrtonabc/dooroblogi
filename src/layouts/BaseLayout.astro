@@ -1,0 +1,242 @@
+---
+import '../styles/fonts.css';
+import '../styles/global.css';
+
+import frauncesLatin from '@fontsource-variable/fraunces/files/fraunces-latin-opsz-normal.woff2?url';
+import frauncesLatinExt from '@fontsource-variable/fraunces/files/fraunces-latin-ext-opsz-normal.woff2?url';
+import archivoLatin from '@fontsource-variable/archivo/files/archivo-latin-wght-normal.woff2?url';
+import archivoLatinExt from '@fontsource-variable/archivo/files/archivo-latin-ext-wght-normal.woff2?url';
+
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+import StickyCta from '../components/StickyCta.astro';
+import { company } from '../content/company';
+import { organizationSchema, ogImagePath, SCHEMA_CONTEXT } from '../content/schema';
+import { localeInfo, locales, switchLocalePath, type Locale } from '../i18n';
+import { t } from '../i18n/ui';
+
+interface Props {
+  locale: Locale;
+  /** Ścieżka bieżącej strony (z prefiksem języka), np. "/produkty/". */
+  path: string;
+  title: string;
+  description: string;
+  /** Ścieżki odpowiedników w pozostałych językach — do hreflang. */
+  alternates?: Partial<Record<Locale, string>>;
+  /** Ścieżka obrazu Open Graph (w `public/`, np. "/og/doors-oblogi-pl.jpg"). */
+  ogImage?: string;
+  /** Opis obrazu Open Graph — domyślnie tytuł strony. */
+  ogImageAlt?: string;
+  /** Dodatkowy typ schema.org (np. Product, FAQPage). */
+  jsonLd?: Record<string, unknown>[];
+  noindex?: boolean;
+  /** Wyłącza hreflang (strona nie istnieje w pozostałych językach, np. 404). */
+  noAlternates?: boolean;
+  /** Obraz do wczesnego pobrania (LCP) — np. hero na stronie głównej. */
+  preloadImage?: {
+    href: string;
+    type?: string;
+    /** `srcset` — musi odpowiadać temu, co stoi w znaczniku `<img>`. */
+    srcset?: string;
+    /** `sizes` — j.w. */
+    sizes?: string;
+  };
+}
+
+const {
+  locale,
+  path,
+  title,
+  description,
+  alternates = {},
+  ogImage = ogImagePath(locale),
+  ogImageAlt,
+  jsonLd = [],
+  noindex = false,
+  noAlternates = false,
+  preloadImage,
+} = Astro.props;
+
+const site = Astro.site ?? new URL('https://doors-oblogi.pl');
+const canonical = new URL(path, site).href;
+
+/** Pełny zestaw alternatyw: jawnie podane + wyliczone z bieżącej ścieżki. */
+const hreflang = noAlternates
+  ? []
+  : locales.map((l) => {
+      const target = alternates[l] ?? switchLocalePath(locale, l, path);
+      return {
+        lang: l === 'pl' ? 'pl-PL' : l === 'en' ? 'en' : 'de',
+        href: new URL(target, site).href,
+        locale: l,
+      };
+    });
+
+/** Jeden wzorzec tytułu: „{tytuł strony} | Doors Obłogi". */
+const fullTitle = `${title} | ${company.name}`;
+
+const organizationLd = organizationSchema(locale);
+
+const websiteLd = {
+  '@type': 'WebSite',
+  '@id': `${site.href}#website`,
+  url: site.href,
+  name: company.name,
+  /**
+   * Węzeł `WebSite` jest jeden na całą witrynę, więc deklarujemy wszystkie
+   * trzy języki — nie tylko język bieżącej strony. `SearchAction` celowo
+   * nie ma: na stronie nie ma wyszukiwarki.
+   */
+  inLanguage: locales.map((l) => localeInfo[l].htmlLang),
+  /**
+   * `publisher` musi wskazywać DOKŁADNIE ten sam `@id` co organizacja.
+   * Wcześniej było tu `…/#organization` (ze slashem), a organizacja miała
+   * `…#organization` — w efekcie referencja wisiała w próżni i nie łączyła
+   * węzłów w grafie wiedzy.
+   */
+  publisher: { '@id': organizationLd['@id'] },
+};
+
+/**
+ * Jeden blok JSON-LD z `@context` i `@graph`. Bez `@context` parser musi
+ * zgadywać słownik (JSON-LD 1.0 zakłada schema.org domyślnie, JSON-LD 1.1
+ * już nie), a Structured Data Tester zgłasza brak kontekstu.
+ *
+ * Węzły wewnątrz grafu nie powtarzają `@context` — kontekst i tak obowiązuje
+ * cały dokument, a powtórzenie w środku tylko zaśmieca wygenerowany JSON.
+ */
+const withoutContext = (node: Record<string, unknown>) => {
+  const { '@context': _ignored, ...rest } = node;
+  return rest;
+};
+
+const graph = {
+  '@context': SCHEMA_CONTEXT,
+  '@graph': [organizationLd, websiteLd, ...jsonLd].map(withoutContext),
+};
+
+const ogImageUrl = new URL(ogImage, site).href;
+/** Alt obrazu OG — opis zdjęcia, bez powtórzenia marki (strona już ją niesie). */
+const ogAlt = ogImageAlt ?? title;
+
+/** Języki, w których istnieje ta sama strona — do og:locale:alternate. */
+const alternateLocales = hreflang.filter((alt) => alt.locale !== locale);
+---
+
+<!doctype html>
+<html lang={localeInfo[locale].htmlLang}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="generator" content={Astro.generator} />
+
+    {/*
+      Jedna linia, która mówi CSS, że JavaScript jest. Bez niej formularz
+      pokazywałby oba zestawy pól (a pytanie o embudo nie działałoby).
+      Klasa na `<html>` zamiast `@media (scripting: enabled)` — wsparcie
+      `scripting` jest nowsze i nie wszędzie.
+    */}
+    <script is:inline>
+      document.documentElement.classList.add('js');
+    </script>
+
+    <title>{fullTitle}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    {noindex && <meta name="robots" content="noindex, nofollow" />}
+
+    {
+      hreflang.map((alt) => (
+        <link rel="alternate" hreflang={alt.lang} href={alt.href} />
+      ))
+    }
+    {
+      !noAlternates && (
+        <link
+          rel="alternate"
+          hreflang="x-default"
+          href={new URL(alternates.pl ?? '/', site).href}
+        />
+      )
+    }
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content={company.name} />
+    <meta property="og:locale" content={localeInfo[locale].ogLocale} />
+    {
+      alternateLocales.map((alt) => (
+        <meta property="og:locale:alternate" content={localeInfo[alt.locale].ogLocale} />
+      ))
+    }
+    <meta property="og:title" content={fullTitle} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content={ogImageUrl} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:type" content="image/jpeg" />
+    <meta property="og:image:alt" content={ogAlt} />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={fullTitle} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={ogImageUrl} />
+    <meta name="twitter:image:alt" content={ogAlt} />
+
+    <meta name="theme-color" content="#1b1611" />
+    <meta name="format-detection" content="telephone=yes" />
+    {
+      preloadImage && (
+        <link
+          rel="preload"
+          as="image"
+          href={preloadImage.href}
+          type={preloadImage.type}
+          fetchpriority="high"
+          imagesrcset={preloadImage.srcset}
+          imagesizes={preloadImage.sizes}
+        />
+      )
+    }
+    <link rel="sitemap" href="/sitemap-index.xml" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/favicon.svg" />
+
+    {/* Wczesne pobranie krojów — LCP tekstu nagłówka.
+        Polskie diakrytyki (ą ę ć ł ń ś ź ż) siedzą w subsetcie `latin-ext`,
+        więc preloadujemy oba subsety obu krojów — inaczej `latin-ext` jest
+        odkrywany dopiero po pierwszym malowaniu (skok glifów). */}
+    <link rel="preload" href={frauncesLatin} as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href={frauncesLatinExt} as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href={archivoLatin} as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href={archivoLatinExt} as="font" type="font/woff2" crossorigin />
+
+    <script type="application/ld+json" set:html={JSON.stringify(graph)} is:inline />
+
+    {/*
+      Única animación del sitio: el titular del hero, palabra a palabra.
+      Sin ScrollTrigger y sin ningún efecto ligado al scroll (decisión del
+      cliente). Si el JS no carga, el titular se ve entero.
+    */}
+    <script>
+      import '../scripts/motion';
+    </script>
+  </head>
+  <body>
+    <a class="skip-link" href="#main">{t(locale, 'nav.skip')}</a>
+    <Header locale={locale} path={path} alternates={alternates} />
+    <main id="main">
+      <slot />
+    </main>
+    <Footer locale={locale} path={path} alternates={alternates} />
+    {/* Textura: grano fino sobre toda la página. Decorativo, no captura clics. */}
+    <div class="grain" aria-hidden="true"></div>
+    {/*
+      Barra de acciones flotante: sólo móvil (CSS la oculta encima de 48rem y
+      el `padding-bottom` del body reserva su altura). Estaba escrita pero no
+      montada en ninguna página, así que no se veía nunca. Va al final para
+      que en el DOM quede tras el pie, aunque sea `position: fixed`.
+    */}
+    <StickyCta locale={locale} />
+  </body>
+</html>

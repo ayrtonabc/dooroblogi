@@ -1,0 +1,106 @@
+---
+import { company, phoneDisplay } from '../content/company';
+import BrandLogo from './BrandLogo.astro';
+import Flag from './Flag.astro';
+import { localeInfo, locales, pathFor, type Locale } from '../i18n';
+import { t } from '../i18n/ui';
+
+interface Props {
+  locale: Locale;
+  path: string;
+  alternates: Partial<Record<Locale, string>>;
+}
+
+const { locale, alternates } = Astro.props;
+
+/** Stopka nie powtarza całej nawigacji — trzy najważniejsze linki + kontakt. */
+const navItems = [
+  { key: 'catalog' as const, label: t(locale, 'nav.products') },
+  { key: 'quote' as const, label: t(locale, 'nav.priceList') },
+  { key: 'contact' as const, label: t(locale, 'nav.contact') },
+];
+
+const year = new Date().getFullYear();
+---
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer__grid">
+      <div class="footer__brand">
+        <a class="brand" href={pathFor(locale, 'home')}>
+          <BrandLogo locale={locale} invert />
+        </a>
+        <p>{t(locale, 'footer.about')}</p>
+        <div class="footer__lang">
+          <div class="lang" role="group" aria-label={t(locale, 'footer.language')}>
+            {
+              locales.map((l) => (
+                <a
+                  class="lang__item"
+                  href={alternates[l] ?? pathFor(l, 'home')}
+                  hreflang={localeInfo[l].htmlLang}
+                  lang={localeInfo[l].htmlLang}
+                  aria-current={l === locale ? 'true' : undefined}
+                  title={localeInfo[l].name}
+                >
+                  <Flag code={l} class="lang__flag" />
+                  <span class="lang__code">{l.toUpperCase()}</span>
+                  <span class="visually-hidden">{localeInfo[l].name}</span>
+                </a>
+              ))
+            }
+          </div>
+        </div>
+      </div>
+
+      <nav aria-labelledby="footer-nav-title">
+        <h2 class="footer__title" id="footer-nav-title">{t(locale, 'footer.nav')}</h2>
+        <ul class="footer__list">
+          {
+            navItems.map((item) => (
+              <li>
+                <a href={pathFor(locale, item.key)}>{item.label}</a>
+              </li>
+            ))
+          }
+          <li>
+            <a href={company.facebookUrl} rel="noopener me" target="_blank">Facebook</a>
+          </li>
+        </ul>
+      </nav>
+
+      <div>
+        <h2 class="footer__title">{t(locale, 'footer.production')}</h2>
+        <ul class="footer__list">
+          <li>{company.shippingNote[locale]}</li>
+          <li>{t(locale, 'footer.trim')}</li>
+          <li>{t(locale, 'footer.slats')}</li>
+          <li>{t(locale, 'footer.panels')}</li>
+        </ul>
+      </div>
+
+      <div>
+        <h2 class="footer__title">{t(locale, 'footer.contact')}</h2>
+        <div class="footer__contact">
+          <strong>
+            <a href={`tel:${company.phoneE164}`}>{phoneDisplay(locale)}</a>
+          </strong>
+          <span>{company.contactPerson} — {company.contactPersonRole[locale]}</span>
+          <span>{company.region}, {company.city}</span>
+          <span>{company.voivodeship[locale]}, {company.country[locale]}</span>
+          <a href={`mailto:${company.contactEmail}`}>{company.contactEmail}</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer__bottom">
+      <span>© {year} {company.name}. {t(locale, 'footer.rights')}</span>
+      <span>{company.shippingNote[locale]}</span>
+      <span class="footer__legal">
+        <a href={pathFor(locale, 'trade')}>{t(locale, 'nav.trade')}</a>
+        <a href={pathFor(locale, 'delivery')}>{t(locale, 'nav.delivery')}</a>
+        <a href={pathFor(locale, 'privacy')}>{t(locale, 'footer.cookies')}</a>
+      </span>
+    </div>
+  </div>
+</footer>

@@ -1,0 +1,23 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import QuoteView from '../../views/QuoteView.astro';
+
+const locale = 'pl' as const;
+const path = '/cennik/';
+
+const alternates = {
+  pl: '/cennik/',
+  en: '/en/price-list/',
+  de: '/de/preisliste/',
+} as Partial<Record<typeof locale, string>>;
+---
+
+<BaseLayout
+  locale={locale}
+  path={path}
+  title="Cennik obłogów dębowych — wycena"
+  description="Cennik obłogów dębowych zależy od profilu, długości, grubości i ilości, więc go nie publikujemy. Zapytanie — dostaniesz cenę za mb i termin realizacji."
+  alternates={alternates}
+>
+  <QuoteView locale={locale} />
+</BaseLayout>

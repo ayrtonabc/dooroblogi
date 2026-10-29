@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+
+# Strony techniczne — poza indeksem. Uwaga: strona 404 jest serwowana
+# jako /404.html, więc reguła „Disallow: /404/” niczego nie blokowała.
+Disallow: /_astro/
+Disallow: /_image
+
+Sitemap: https://doors-oblogi.pl/sitemap-index.xml

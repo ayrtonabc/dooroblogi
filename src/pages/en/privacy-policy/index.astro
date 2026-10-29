@@ -1,0 +1,23 @@
+---
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import PrivacyView from '../../../views/PrivacyView.astro';
+
+const locale = 'en' as const;
+const path = '/en/privacy-policy/';
+
+const alternates = {
+  pl: '/polityka-prywatnosci/',
+  en: '/en/privacy-policy/',
+  de: '/de/datenschutz/',
+} as Partial<Record<typeof locale, string>>;
+---
+
+<BaseLayout
+  locale={locale}
+  path={path}
+  title="Privacy policy"
+  description="How we handle the data from the quote form: who is the controller, what we collect, how long we keep it and what rights you have."
+  alternates={alternates}
+>
+  <PrivacyView locale={locale} />
+</BaseLayout>

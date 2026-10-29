@@ -1,0 +1,198 @@
+---
+import Breadcrumbs from '../components/Breadcrumbs.astro';
+import Icon from '../components/Icon.astro';
+import QuoteForm from '../components/QuoteForm.astro';
+import CtaBand from '../components/CtaBand.astro';
+import ObjectionList from '../components/ObjectionList.astro';
+import { Image } from 'astro:assets';
+import { company, whatsappUrl } from '../content/company';
+import { trade } from '../content/trade';
+import { tradeObjections } from '../content/funnel';
+import { image } from '../content/images';
+import { pathFor, formHref, type Locale } from '../i18n';
+import { t } from '../i18n/ui';
+
+interface Props {
+  locale: Locale;
+}
+
+const { locale } = Astro.props;
+
+const breadcrumbs = [
+  { label: t(locale, 'nav.home'), href: pathFor(locale, 'home') },
+  { label: t(locale, 'nav.trade') },
+];
+
+const waText = t(locale, 'wa.trade');
+---
+
+<Breadcrumbs items={breadcrumbs} locale={locale} />
+
+<!--
+  01 · HERO — a dos columnas, como en la maqueta: el texto a la izquierda y la
+  foto A SANGRE a la derecha, hasta el borde de la pantalla. La sección no
+  lleva padding vertical para que la foto ocupe el alto completo.
+-->
+<section class="section section--cream trade-hero">
+  <div class="trade-hero__grid">
+    <div class="trade-hero__body">
+      <p class="kicker">{trade.kicker[locale]}</p>
+      <h1 class="trade-hero__title">{trade.title[locale]}</h1>
+      <p class="trade-hero__lead">{trade.lead[locale]}</p>
+
+      <div class="btn-row">
+        <a class="btn" href="#quote-form">
+          {trade.hero.cta[locale]}
+          <Icon name="arrow" class="btn__icon" />
+        </a>
+        <a class="btn btn--ghost" href="#parametry">
+          {trade.hero.ctaSecondary[locale]}
+          <Icon name="arrow" class="btn__icon" />
+        </a>
+      </div>
+    </div>
+
+    <figure class="trade-hero__figure">
+      <Image
+        src={image(trade.hero.photo.src)}
+        alt={trade.hero.photo.alt[locale]}
+        widths={[640, 960, 1200, 1400]}
+        sizes="(min-width: 62rem) 50vw, 92vw"
+        loading="eager"
+        fetchpriority="high"
+        decoding="async"
+      />
+    </figure>
+  </div>
+</section>
+
+<!--
+  02 · LAS CUATRO COSAS QUE EL COMPRADOR PROFESIONAL NECESITA SABER
+  Icono + título + una frase, con filete entre columnas.
+-->
+<section class="section section--paper trade-features">
+  <div class="container">
+    <p class="trade-features__lead">{trade.features.lead[locale]}</p>
+
+    <ul class="trade-features__list">
+      {
+        trade.features.items.map((item) => (
+          <li class="trade-feature">
+            <Icon name={item.icon} class="trade-feature__icon" />
+            <h2 class="trade-feature__title">{item.title[locale]}</h2>
+            <p class="trade-feature__text">{item.text[locale]}</p>
+          </li>
+        ))
+      }
+    </ul>
+  </div>
+</section>
+
+<!--
+  03 · LOS TRES PASOS — banda oscura. El número es el ORDEN del paso (de ahí
+  las flechas entre ellos), no un índice decorativo de sección.
+-->
+<section class="section section--dark trade-steps">
+  <div class="container">
+    <div class="trade-steps__grid">
+      <div class="trade-steps__head">
+        <p class="kicker">{trade.steps.kicker[locale]}</p>
+        <h2 class="trade-steps__title">{trade.steps.title[locale]}</h2>
+      </div>
+
+      <ol class="trade-steps__list">
+        {
+          trade.steps.items.map((step, index) => (
+            <li class="trade-step">
+              <span class="trade-step__num" aria-hidden="true">
+                {index + 1}.
+              </span>
+              <div class="trade-step__body">
+                <h3 class="trade-step__title">{step.title[locale]}</h3>
+                <p class="trade-step__text">{step.text[locale]}</p>
+              </div>
+            </li>
+          ))
+        }
+      </ol>
+    </div>
+  </div>
+</section>
+
+<!--
+  04 · DATOS Y PREGUNTAS — dos columnas con filete: a la izquierda los datos
+  técnicos, a la derecha las preguntas que se hacen antes de cerrar.
+-->
+<section class="section section--cream trade-info" id="parametry">
+  <div class="container">
+    <div class="trade-info__grid">
+      <div class="trade-info__specs">
+        <p class="kicker">{trade.specs.kicker[locale]}</p>
+        <h2 class="trade-info__title">{trade.specs.title[locale]}</h2>
+        <p class="lede">{trade.specs.lead[locale]}</p>
+
+        <dl class="specs">
+          {
+            trade.specs.rows.map((row) => (
+              <div class="specs__row">
+                <dt class="specs__label">{row.label[locale]}</dt>
+                <dd class="specs__value">{row.value[locale]}</dd>
+              </div>
+            ))
+          }
+        </dl>
+
+        <div class="trade-info__note">
+          <p>{trade.specs.note[locale]}</p>
+          <a class="link-arrow" href={`tel:${company.phoneE164}`}>
+            {t(locale, 'cta.call')}
+          </a>
+        </div>
+      </div>
+
+      <div class="trade-info__questions">
+        <ObjectionList locale={locale} items={tradeObjections} headingLevel={2} />
+      </div>
+    </div>
+  </div>
+</section>
+
+<!--
+  05 · EL FORMULARIO — centrado en su sección, sin foto al lado. Es el punto
+  de conversión de la página: el bloque va en el centro del ancho de lectura
+  para que el formulario sea lo único que hay que mirar.
+
+  OJO: la sección NO lleva `id="quote-form"`. Ese id es del `<form>` (lo usa
+  el script del componente y las anclas de los CTA). Con el id repetido, el
+  `document.getElementById('quote-form')` del script devolvía la SECCIÓN,
+  que no tiene `data-endpoint`: el formulario se caía siempre en la rama del
+  `mailto:` y nunca llegaba al endpoint, por muy configurado que estuviera.
+-->
+<section class="section section--dark trade-form">
+  <div class="container trade-form__inner">
+    <div class="trade-form__body">
+      <p class="kicker">{trade.form.kicker[locale]}</p>
+      <h2 class="trade-form__title">{trade.form.title[locale]}</h2>
+      <p class="lede">{trade.form.lead[locale]}</p>
+
+      <div class="card trade-form__card">
+        <QuoteForm locale={locale} context="trade" showTaxId variant="B" />
+      </div>
+    </div>
+  </div>
+</section>
+
+<!--
+  06 · CIERRE — la banda de la maqueta: la madera a la izquierda y la llamada
+  a la derecha. Aquí el botón es para CONVERSAR (WhatsApp o teléfono), no un
+  salto de vuelta al formulario que está justo encima.
+-->
+<CtaBand
+  title={trade.cta.title[locale]}
+  text={trade.cta.text[locale]}
+  primaryLabel={trade.cta.label[locale]}
+  primaryHref={whatsappUrl(waText)}
+  secondaryLabel={t(locale, 'cta.call')}
+  secondaryHref={`tel:${company.phoneE164}`}
+  image={{ src: image(trade.cta.photo.src), alt: trade.cta.photo.alt[locale] }}
+/>

@@ -1,0 +1,46 @@
+---
+import Breadcrumbs from '../components/Breadcrumbs.astro';
+import { privacy } from '../content/pages';
+import { pathFor, type Locale } from '../i18n';
+import { t } from '../i18n/ui';
+
+interface Props {
+  locale: Locale;
+}
+
+const { locale } = Astro.props;
+
+const breadcrumbs = [
+  { label: t(locale, 'nav.home'), href: pathFor(locale, 'home') },
+  { label: t(locale, 'footer.cookies') },
+];
+---
+
+<Breadcrumbs items={breadcrumbs} locale={locale} />
+
+<section class="section section--paper page-head">
+  <div class="container">
+    <div class="page-head__inner">
+      <p class="kicker">{privacy.kicker[locale]}</p>
+      <h1 class="page-head__title">{privacy.title[locale]}</h1>
+      <p class="lede">{privacy.lead[locale]}</p>
+    </div>
+  </div>
+</section>
+
+<section class="section section--tight section--paper">
+  <div class="container container--narrow">
+    <div class="prose">
+      {
+        privacy.sections.map((section) => (
+          <>
+            <h2>{section.heading[locale]}</h2>
+            {section.body[locale].map((paragraph) => (
+              <p>{paragraph}</p>
+            ))}
+          </>
+        ))
+      }
+    </div>
+  </div>
+</section>

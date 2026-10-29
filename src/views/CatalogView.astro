@@ -1,0 +1,123 @@
+---
+import SectionHead from '../components/SectionHead.astro';
+import ProductCard from '../components/ProductCard.astro';
+import FaqList from '../components/FaqList.astro';
+import CtaBand from '../components/CtaBand.astro';
+import Breadcrumbs from '../components/Breadcrumbs.astro';
+import { sortedProducts } from '../content/products';
+import { company, whatsappUrl } from '../content/company';
+import { priceFlow } from '../content/pricing';
+import { catalog } from '../content/pages';
+import { trade } from '../content/trade';
+import { pathFor, quoteHref, formHref, type Locale } from '../i18n';
+import { t } from '../i18n/ui';
+
+interface Props {
+  locale: Locale;
+}
+
+const { locale } = Astro.props;
+
+const breadcrumbs = [
+  { label: t(locale, 'nav.home'), href: pathFor(locale, 'home') },
+  { label: t(locale, 'nav.products') },
+];
+
+const waText = t(locale, 'wa.quote');
+---
+
+<Breadcrumbs items={breadcrumbs} locale={locale} />
+
+<section class="section section--paper page-head">
+  <div class="container">
+    <div class="page-head__inner">
+      <p class="kicker">{t(locale, 'catalog.range')}</p>
+      <h1 class="page-head__title">{catalog.h1[locale]}</h1>
+      <p class="lede">{catalog.lead[locale]}</p>
+    </div>
+  </div>
+</section>
+
+<section class="section section--tight section--cream">
+  <div class="container">
+    <div class="grid-products">
+      {
+        sortedProducts.map((product) => (
+          <ProductCard product={product} locale={locale} level={2} />
+        ))
+      }
+    </div>
+  </div>
+</section>
+
+<section class="section section--paper">
+  <div class="container">
+    <SectionHead
+      kicker={priceFlow.kicker[locale]}
+      title={priceFlow.title[locale]}
+      lede={priceFlow.lead[locale]}
+      split
+    />
+    <div class="grid-apps">
+      {
+        priceFlow.steps.map((step) => (
+          <div class="app">
+            <h3 class="app__title">{step.title[locale]}</h3>
+            <p class="app__text">{step.text[locale]}</p>
+          </div>
+        ))
+      }
+    </div>
+    <p class="mt-lg">
+      <a class="link-arrow" href={quoteHref(locale)}>{t(locale, 'nav.priceList')}</a>
+    </p>
+  </div>
+</section>
+
+<section class="section section--sand">
+  <div class="container">
+    <div class="split">
+      <div>
+        <SectionHead
+          kicker={trade.kicker[locale]}
+          title={t(locale, 'catalog.tradeTitle')}
+          lede={t(locale, 'catalog.tradeLede')}
+        />
+        <p class="mt-lg">
+          <a class="link-arrow" href={pathFor(locale, 'trade')}>{t(locale, 'nav.trade')}</a>
+        </p>
+      </div>
+      <div>
+        <div class="card" style="padding: clamp(1.5rem, 3vw, 2.5rem);">
+          <h3 class="highlight__title">{t(locale, 'catalog.tradeCardTitle')}</h3>
+          <p class="highlight__text">{t(locale, 'catalog.tradeCardText')}</p>
+          <p class="mt-lg">
+            <a class="btn" href={formHref(locale, 'trade')}>{t(locale, 'cta.quote')}</a>
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section section--paper">
+  <div class="container">
+    <SectionHead
+      kicker={t(locale, 'seo.faqKicker')}
+      title={t(locale, 'catalog.faqTitle')}
+      split
+    />
+    <FaqList locale={locale} />
+  </div>
+</section>
+
+<CtaBand
+  title={t(locale, 'catalog.ctaTitle')}
+  text={t(locale, 'catalog.ctaText')}
+  primaryLabel={t(locale, 'cta.quote')}
+  primaryHref={quoteHref(locale)}
+  secondaryLabel={t(locale, 'cta.call')}
+  secondaryHref={`tel:${company.phoneE164}`}
+  whatsappLabel={t(locale, 'form.whatsapp')}
+  whatsappHref={whatsappUrl(waText)}
+/>

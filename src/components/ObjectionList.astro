@@ -1,0 +1,60 @@
+---
+/**
+ * Lista obiekcji — pytania, które pojawiają się przed zamówieniem, z krótką
+ * i uczciwą odpowiedzią.
+ *
+ * RÓŻNICA OD FAQ: FAQ (`src/components/FaqList.astro`) to pytania o produkt
+ * w `<details>` — trzeba je rozwinąć. Tutaj odpowiedzi są widoczne od razu,
+ * bo to odpowiedzi na pytania o ZAKUP, nie o materiał.
+ *
+ * Samowystarczalny: bierze pozycje z `src/content/funnel.ts`.
+ *
+ * Użycie:
+ *   <ObjectionList locale={locale} />
+ */
+import { objections, objectionBlock, type Objection } from '../content/funnel';
+import type { Locale } from '../i18n';
+
+interface Props {
+  locale: Locale;
+  /** Pozycje — domyślnie sześć z `funnel.ts`. */
+  items?: Objection[];
+  /** Nagłówek. */
+  title?: string;
+  /** Nadtytuł. */
+  kicker?: string;
+  /** Jedno zdanie pod nagłówkiem. */
+  lede?: string;
+  /** Poziom nagłówka: 3 (domyślnie) albo 2, gdy blok stoi sam. */
+  headingLevel?: 2 | 3;
+}
+
+const {
+  locale,
+  items = objections,
+  title = objectionBlock.title[locale],
+  kicker = objectionBlock.kicker[locale],
+  lede = objectionBlock.lede[locale],
+  headingLevel = 3,
+} = Astro.props;
+
+const Heading = `h${headingLevel}` as 'h2' | 'h3';
+---
+
+<div class="objections">
+  <div class="objections__head">
+    <p class="kicker">{kicker}</p>
+    <Heading class="objections__title">{title}</Heading>
+    <p class="lede">{lede}</p>
+  </div>
+  <dl class="objections__list">
+    {
+      items.map((item) => (
+        <div class="objections__row">
+          <dt class="objections__question">{item.question[locale]}</dt>
+          <dd class="objections__answer">{item.answer[locale]}</dd>
+        </div>
+      ))
+    }
+  </dl>
+</div>

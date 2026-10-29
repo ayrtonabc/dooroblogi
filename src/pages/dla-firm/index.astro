@@ -1,0 +1,23 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import TradeView from '../../views/TradeView.astro';
+
+const locale = 'pl' as const;
+const path = '/dla-firm/';
+
+const alternates = {
+  pl: '/dla-firm/',
+  en: '/en/for-trade/',
+  de: '/de/fuer-handwerk/',
+} as Partial<Record<typeof locale, string>>;
+---
+
+<BaseLayout
+  locale={locale}
+  path={path}
+  title="Obłogi dębowe hurtowo — dla stolarzy"
+  description="Obłogi dębowe hurtowo: stały profil i selekcja drewna między partiami, wycena na całą partię i dostawa kurierem w całej Polsce."
+  alternates={alternates}
+>
+  <TradeView locale={locale} />
+</BaseLayout>

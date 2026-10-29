@@ -1,0 +1,23 @@
+---
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import TradeView from '../../../views/TradeView.astro';
+
+const locale = 'de' as const;
+const path = '/de/fuer-handwerk/';
+
+const alternates = {
+  pl: '/dla-firm/',
+  en: '/en/for-trade/',
+  de: '/de/fuer-handwerk/',
+} as Partial<Record<typeof locale, string>>;
+---
+
+<BaseLayout
+  locale={locale}
+  path={path}
+  title="Eichen-Abschlussleisten Großhandel"
+  description="Eichen-Abschlussleisten im Großhandel: gleiches Profil und dieselbe Selektion über Chargen hinweg, Angebot für die ganze Charge, Kurier in ganz Polen."
+  alternates={alternates}
+>
+  <TradeView locale={locale} />
+</BaseLayout>

@@ -1,0 +1,154 @@
+---
+/**
+ * CTA de cierre de embudo. Título corto con BENEFICIO (nunca «Contáctanos»),
+ * CTA primario + secundario y microcopy honesto debajo.
+ *
+ * Compatible con lo que ya llaman las vistas: `title`, `text`,
+ * `primaryLabel`, `primaryHref`, `secondaryLabel`, `secondaryHref`,
+ * `whatsappHref`, `whatsappLabel`. Todo lo nuevo es opcional:
+ *   • `microcopy` — la promesa honesta bajo el botón.
+ *   • `variant` — la superficie: `oak` (la de siempre), `cream`, `sand`, `dark`.
+ *   • `page` — si se pasa, título/texto/microcopy salen de `funnel.ts`.
+ *
+ * Użycie:
+ *   <CtaBand
+ *     locale={locale}
+ *     page="home"
+ *     variant="oak"
+ *     primaryHref={pathFor(locale, 'quote')}
+ *   />
+ */
+import { Image, type ImageMetadata } from 'astro:assets';
+import {
+  actionHref,
+  funnelPages,
+  pick,
+  type FunnelPageKey,
+  type FunnelText,
+} from '../content/funnel';
+import type { Locale } from '../i18n';
+
+interface Props {
+  locale: Locale;
+  /** Título corto con beneficio. */
+  title?: string | FunnelText;
+  /** Una frase de apoyo. */
+  text?: string | FunnelText;
+  /** Microcopy bajo el botón: qué ocurre y qué recibes. */
+  microcopy?: string | FunnelText;
+  /** Etiqueta y destino del CTA primario. */
+  primaryLabel?: string | FunnelText;
+  primaryHref?: string;
+  /** CTA secundario (telefono, WhatsApp, página vecina). */
+  secondaryLabel?: string | FunnelText;
+  secondaryHref?: string;
+  /** Enlace a WhatsApp — se añade como tercer botón. */
+  whatsappHref?: string;
+  whatsappLabel?: string;
+  /** Superficie de la banda. */
+  variant?: 'oak' | 'cream' | 'sand' | 'dark';
+  /**
+   * Foto a la izquierda de la banda (la maqueta del cliente la lleva en la
+   * franja de cierre). Con foto, la banda se parte en dos: la imagen a
+   * sangre y el texto en la superficie de siempre.
+   */
+  image?: { src: ImageMetadata; alt: string };
+  /** Alineación: `start` (texto a la izquierda) o `center` (bloque centrado). */
+  align?: 'start' | 'center';
+  /**
+   * Página del embudo: de aquí salen título, texto, microcopy y — si no se
+   * pasan a mano — la etiqueta y el destino del CTA primario.
+   * El CTA secundario SIEMPRE es explícito: la regla es un CTA primario
+   * sobrio y los secundarios, discretos y opcionales.
+   */
+  page?: FunnelPageKey;
+}
+
+const {
+  locale,
+  title,
+  text,
+  microcopy,
+  primaryLabel,
+  primaryHref,
+  secondaryLabel,
+  secondaryHref,
+  whatsappHref,
+  whatsappLabel,
+  variant = 'oak',
+  align = 'start',
+  page,
+  image,
+} = Astro.props;
+
+const source = page ? funnelPages[page] : undefined;
+
+const heading = pick(title ?? source?.title ?? '', locale);
+const lede = pick(text ?? source?.text ?? '', locale);
+const note = pick(microcopy ?? source?.microcopy ?? '', locale);
+const primaryText = primaryLabel
+  ? pick(primaryLabel, locale)
+  : source
+    ? source.primary.label[locale]
+    : '';
+const primaryUrl = primaryHref ?? (source ? actionHref(locale, source.primary) : undefined);
+---
+
+<section
+  class:list={[
+    'section',
+    'cta-band',
+    `cta-band--${variant}`,
+    align === 'center' && 'cta-band--center',
+    image && 'cta-band--split',
+  ]}
+>
+  {
+    image && (
+      <figure class="cta-band__figure">
+        <Image
+          src={image.src}
+          alt={image.alt}
+          widths={[480, 720, 960]}
+          sizes="(min-width: 62rem) 32vw, 92vw"
+          loading="lazy"
+          decoding="async"
+        />
+      </figure>
+    )
+  }
+  <div class="container">
+    <div class="cta-band__inner">
+      <div>
+        {heading && <h2 class="cta-band__title">{heading}</h2>}
+        {lede && <p class="cta-band__text">{lede}</p>}
+      </div>
+      <div class="cta-band__actions">
+        <div class="btn-row">
+          {
+            primaryText && primaryUrl && (
+              <a class="btn" href={primaryUrl}>
+                {primaryText}
+              </a>
+            )
+          }
+          {
+            secondaryLabel && secondaryHref && (
+              <a class="btn btn--ghost" href={secondaryHref}>
+                {pick(secondaryLabel, locale)}
+              </a>
+            )
+          }
+          {
+            whatsappHref && whatsappLabel && (
+              <a class="btn btn--ghost" href={whatsappHref} target="_blank" rel="noopener">
+                {whatsappLabel}
+              </a>
+            )
+          }
+        </div>
+        {note && <p class="cta-band__microcopy">{note}</p>}
+      </div>
+    </div>
+  </div>
+</section>

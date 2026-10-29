@@ -1,0 +1,53 @@
+---
+import { Image } from 'astro:assets';
+import { image } from '../content/images';
+import { productPath, type Locale } from '../i18n';
+import { t } from '../i18n/ui';
+import type { Product } from '../content/products';
+
+interface Props {
+  product: Product;
+  locale: Locale;
+  /**
+   * Poziom nagłówka kafla. Na stronie katalogowej kafle stoją bezpośrednio
+   * po `h1`, więc dostają `h2` — inaczej hierarchia skacze z h1 na h3.
+   */
+  level?: 2 | 3;
+}
+
+const { product, locale, level = 3 } = Astro.props;
+const href = productPath(locale, product.slug[locale]);
+const Heading = `h${level}` as 'h2' | 'h3';
+---
+
+<article class="card">
+  <a href={href} class="card__media" aria-label={product.name[locale]}>
+    <Image
+      src={image(product.image.src)}
+      alt={product.image.alt[locale]}
+      widths={[400, 600, 800]}
+      sizes="(min-width: 64rem) 22vw, (min-width: 48rem) 45vw, 90vw"
+      loading="lazy"
+      decoding="async"
+    />
+  </a>
+  <div class="card__body">
+    <Heading class="card__title">
+      <a href={href} style="text-decoration: none;">{product.name[locale]}</a>
+    </Heading>
+    <p class="card__text">{product.summary[locale]}</p>
+    <div class="card__footer">
+      {/* Tekst widoczny jest krótki — nazwa produktu stoi już w nagłówku
+          kafla i powtarzanie jej łamało link na dwa wiersze (a strzałka
+          „→" zostawała sama w drugim). Pełna nazwa zostaje w nazwie
+          dostępnej linku. */}
+      <a
+        class="link-arrow"
+        href={href}
+        aria-label={`${product.name[locale]} — ${t(locale, 'cta.details')}`}
+      >
+        {t(locale, 'cta.details')}
+      </a>
+    </div>
+  </div>
+</article>

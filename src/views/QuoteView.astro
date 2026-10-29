@@ -1,0 +1,109 @@
+---
+import Breadcrumbs from '../components/Breadcrumbs.astro';
+import SectionHead from '../components/SectionHead.astro';
+import QuoteForm from '../components/QuoteForm.astro';
+import FaqList from '../components/FaqList.astro';
+import TermsTable from '../components/TermsTable.astro';
+import ObjectionList from '../components/ObjectionList.astro';
+import { company, phoneDisplay, hoursText } from '../content/company';
+import { quote, quoteFaq } from '../content/pages';
+import { priceFlow } from '../content/pricing';
+import { pathFor, type Locale } from '../i18n';
+import { t } from '../i18n/ui';
+
+interface Props {
+  locale: Locale;
+}
+
+const { locale } = Astro.props;
+
+const breadcrumbs = [
+  { label: t(locale, 'nav.home'), href: pathFor(locale, 'home') },
+  { label: quote.kicker[locale] },
+];
+---
+
+<Breadcrumbs items={breadcrumbs} locale={locale} />
+
+<section class="section section--paper page-head">
+  <div class="container">
+    <div class="page-head__inner">
+      <p class="kicker">{quote.kicker[locale]}</p>
+      <h1 class="page-head__title">{quote.h1[locale]}</h1>
+      <p class="lede">{quote.lead[locale]}</p>
+    </div>
+  </div>
+</section>
+
+<section class="section section--tight section--cream" id="jak-liczymy-cene">
+  <div class="container">
+    <div class="split split--center">
+      <div>
+        <SectionHead
+          kicker={priceFlow.kicker[locale]}
+          title={priceFlow.title[locale]}
+          lede={priceFlow.lead[locale]}
+        />
+        <div class="highlights" style="grid-template-columns: 1fr;">
+          {
+            priceFlow.steps.map((item) => (
+              <div class="highlight">
+                <h3 class="highlight__title">{item.title[locale]}</h3>
+                <p class="highlight__text">{item.text[locale]}</p>
+              </div>
+            ))
+          }
+        </div>
+
+        <div class="contact-list" style="margin-top:2.5rem;">
+          <div class="contact-item">
+            <span class="contact-item__label">{t(locale, 'form.altContact')}</span>
+            <span class="contact-item__value">
+              <a href={`tel:${company.phoneE164}`}>{phoneDisplay(locale)}</a>
+            </span>
+          </div>
+          <div class="contact-item">
+            <span class="contact-item__label">{t(locale, 'contact.person')}</span>
+            <span class="contact-item__value">{company.contactPerson}</span>
+          </div>
+          <div class="contact-item">
+            <span class="contact-item__label">{t(locale, 'contact.hours')}</span>
+            <span class="contact-item__value">{hoursText(locale)}</span>
+          </div>
+          <div class="contact-item">
+            <span class="contact-item__label">{t(locale, 'contact.delivery')}</span>
+            <span class="contact-item__value">{company.shippingNote[locale]}</span>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="card" style="padding: clamp(1.5rem, 3vw, 2.5rem);">
+          <h2 style="font-size: var(--step-2); margin-bottom: 1.25rem;">
+            {t(locale, 'form.title')}
+          </h2>
+          <QuoteForm locale={locale} context="price-list" />
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section section--paper">
+  <div class="container">
+    <TermsTable locale={locale} />
+  </div>
+</section>
+
+<section class="section section--cream">
+  <div class="container">
+    <ObjectionList locale={locale} headingLevel={2} />
+  </div>
+</section>
+
+<section class="section section--cream">
+  <div class="container">
+    <SectionHead kicker={t(locale, 'seo.faqKicker')} title={t(locale, 'seo.faqTitle')} />
+    <FaqList locale={locale} items={quoteFaq} />
+  </div>
+</section>

@@ -1,0 +1,23 @@
+---
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import GalleryView from '../../../views/GalleryView.astro';
+
+const locale = 'en' as const;
+const path = '/en/gallery/';
+
+const alternates = {
+  pl: '/realizacje/',
+  en: '/en/gallery/',
+  de: '/de/galerie/',
+} as Partial<Record<typeof locale, string>>;
+---
+
+<BaseLayout
+  locale={locale}
+  path={path}
+  title="Gallery — oak trim projects and photos"
+  description="Photos of oak trim battens, oak battens and panels: fit-out projects, SEDO ceiling panels and smoked oak. All shot in our workshop."
+  alternates={alternates}
+>
+  <GalleryView locale={locale} />
+</BaseLayout>

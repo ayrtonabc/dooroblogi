@@ -1,0 +1,53 @@
+---
+/**
+ * Página 404 — sirve para las rutas que no existen.
+ *
+ * Antes este archivo era un «banco de pruebas temporal» (lo decía su propio
+ * comentario) que no usaba el contenido de `notFound` y apilaba tres bandas
+ * CTA seguidas. Ahora pinta el 404 de verdad: título, explicación y los
+ * accesos que sí existen.
+ */
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { notFound } from '../content/pages';
+import { pathFor } from '../i18n';
+import { t } from '../i18n/ui';
+
+// El sitio sirve la raíz en polaco: el 404 también, igual que el resto.
+const locale = 'pl' as const;
+
+const links = [
+  { href: pathFor(locale, 'home'), label: notFound.home[locale] },
+  { href: pathFor(locale, 'catalog'), label: notFound.products[locale] },
+  { href: pathFor(locale, 'quote'), label: t(locale, 'nav.priceList') },
+  { href: pathFor(locale, 'contact'), label: notFound.contact[locale] },
+];
+---
+
+<BaseLayout
+  locale={locale}
+  path="/404/"
+  title={notFound.title[locale]}
+  description={notFound.lead[locale]}
+  noindex
+  noAlternates
+>
+  <section class="section section--paper page-head not-found">
+    <div class="container container--narrow">
+      <p class="kicker">404</p>
+      <h1 class="page-head__title">{notFound.title[locale]}</h1>
+      <p class="lede">{notFound.lead[locale]}</p>
+
+      <ul class="not-found__links">
+        {
+          links.map((link) => (
+            <li>
+              <a class="link-arrow" href={link.href}>
+                {link.label}
+              </a>
+            </li>
+          ))
+        }
+      </ul>
+    </div>
+  </section>
+</BaseLayout>

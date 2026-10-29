@@ -1,0 +1,87 @@
+---
+/**
+ * Figura grande con pie de foto que CUENTA algo: qué es, dónde se puso y qué
+ * acabado tiene. Pensada para foto a ancho de columna, no miniatura.
+ *
+ * El pie de foto acepta dos formas:
+ *   • `captionTitle` + `captionText` — título en negrita y frase.
+ *   • `caption` — una sola frase.
+ * Todos aceptan texto plano o un objeto `pl`/`en`/`de`.
+ *
+ * Użycie:
+ *   <ProofFigure
+ *     locale={locale}
+ *     src={image('oblog-w-scianie.jpg')}
+ *     alt={media.home.wallAlt[locale]}
+ *     captionTitle="Obłóg w ścianie"
+ *     captionText="Ten sam dąb, który trafia na podłogę i do drzwi."
+ *     ratio="tall"
+ *   />
+ */
+import { Image } from 'astro:assets';
+import type { ImageMetadata } from 'astro';
+import { pick, type FunnelText } from '../content/funnel';
+import type { Locale } from '../i18n';
+
+interface Props {
+  locale: Locale;
+  /** Zdjęcie klienta (z `src/content/images.ts`). */
+  src: ImageMetadata;
+  /** Opis alternatywny — tekst albo obiekt `pl`/`en`/`de`. */
+  alt: string | FunnelText;
+  /** Tytuł zdania: co to jest. */
+  captionTitle?: string | FunnelText;
+  /** Reszta zdania: gdzie stoi i jaki ma finish. */
+  captionText?: string | FunnelText;
+  /** Cały podpis jednym zdaniem (alternatywa do tytułu + opisu). */
+  caption?: string | FunnelText;
+  /** Proporcje kadru. */
+  ratio?: 'tall' | 'wide' | 'natural';
+  /** Szerokości responsywne dla `srcset`. */
+  widths?: number[];
+  /** Wskazówka `sizes` dla przeglądarki. */
+  sizes?: string;
+  /** `true` = obraz LCP (strona otwiera się nim), `false` = lazy. */
+  eager?: boolean;
+}
+
+const {
+  locale,
+  src,
+  alt,
+  captionTitle,
+  captionText,
+  caption,
+  ratio = 'tall',
+  widths = [480, 720, 960, 1280],
+  sizes = '(min-width: 60rem) 48vw, 92vw',
+  eager = false,
+} = Astro.props;
+
+const altText = pick(alt, locale);
+const titleText = captionTitle ? pick(captionTitle, locale) : '';
+const bodyText = captionText ? pick(captionText, locale) : '';
+const captionTextFull = caption ? pick(caption, locale) : '';
+---
+
+<figure class:list={['proof-figure', `proof-figure--${ratio}`]}>
+  <div class="proof-figure__media">
+    <Image
+      src={src}
+      alt={altText}
+      widths={widths}
+      sizes={sizes}
+      loading={eager ? 'eager' : 'lazy'}
+      decoding="async"
+    />
+  </div>
+  {
+    (titleText || bodyText || captionTextFull) && (
+      <figcaption class="proof-figure__caption">
+        {titleText && <strong class="proof-figure__caption-title">{titleText}</strong>}
+        {bodyText && <span class="proof-figure__caption-text">{bodyText}</span>}
+        {captionTextFull && <span class="proof-figure__caption-text">{captionTextFull}</span>}
+      </figcaption>
+    )
+  }
+</figure>

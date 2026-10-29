@@ -1,0 +1,23 @@
+---
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import QuoteView from '../../../views/QuoteView.astro';
+
+const locale = 'en' as const;
+const path = '/en/price-list/';
+
+const alternates = {
+  pl: '/cennik/',
+  en: '/en/price-list/',
+  de: '/de/preisliste/',
+} as Partial<Record<typeof locale, string>>;
+---
+
+<BaseLayout
+  locale={locale}
+  path={path}
+  title="Price list — oak trim battens"
+  description="The price of oak trim battens depends on profile, length and quantity, so we do not publish it. Send an enquiry — you get the price per metre and a lead time."
+  alternates={alternates}
+>
+  <QuoteView locale={locale} />
+</BaseLayout>

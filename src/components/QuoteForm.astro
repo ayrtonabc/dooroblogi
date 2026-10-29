@@ -1,0 +1,1041 @@
+---
+import { company, phoneDisplay, whatsappUrl } from '../content/company';
+import { products } from '../content/products';
+import { pathFor, type Locale } from '../i18n';
+import { t, tf } from '../i18n/ui';
+import {
+  fieldsFor,
+  formCopy,
+  funnelByProduct,
+  funnelChoice,
+  funnelExtras,
+  type FunnelField,
+  type FunnelVariant,
+} from '../content/funnel';
+import FormField from './FormField.astro';
+import Icon from './Icon.astro';
+
+interface Props {
+  locale: Locale;
+  /** Kontekst strony — np. "home" albo "product:oblog-debowy-ciety". */
+  context?: string;
+  /** Produkt domyślnie zaznaczony na liście. */
+  preselect?: string;
+  /** Pokaż pole NIP (formularz dla firm). */
+  showTaxId?: boolean;
+  /** Identyfikator formularza — kilka formularzy może być na jednej stronie. */
+  formId?: string;
+  /**
+   * Który embudo pokazuje ten formularz:
+   *   • `A` — panele sufitowe i ścienne (mierzymy w m²),
+   *   • `B` — obłogi i lamele (mierzymy w metrach),
+   *   • `both` — strona sama nie wie (np. /cennik/): gość wybiera jednym
+   *     pytaniem, a formularz przełącza zestaw pól.
+   *
+   * Domyślnie `both`. Strona produktu podaje jawnie: tam wiadomo, o co
+   * chodzi — nie pytamy klienta o to, co właśnie czyta.
+   */
+  variant?: FunnelVariant | 'both';
+  /**
+   * Entradilla del formulario. Por defecto, la común (`form.intro`); una
+   * página puede pasar la suya (la maqueta de /kontakt/ lleva la suya).
+   */
+  intro?: string;
+}
+
+const {
+  locale,
+  context = 'general',
+  preselect,
+  showTaxId = false,
+  formId = 'quote-form',
+  variant = 'both',
+  intro,
+} = Astro.props;
+
+/** Czy strona pokazuje oba zestawy pól (gość wybiera) czy jeden. */
+const showBoth = variant === 'both';
+
+/** Zestawy pól do wyrenderowania. */
+const variants: { id: FunnelVariant; fields: FunnelField[] }[] = showBoth
+  ? [
+      { id: 'A', fields: fieldsFor('A') },
+      { id: 'B', fields: fieldsFor('B') },
+    ]
+  : [{ id: variant as FunnelVariant, fields: fieldsFor(variant as FunnelVariant) }];
+
+/**
+ * Emudo aktywne na starcie.
+ *
+ * Strona, która ZNA, o co pytają (karta produktu, strona dla firm), podaje
+ * swój wariant — tam nie zadajemy pytania, którego klient właśnie czyta.
+ * `both` startuje od A (panele), bo to pierwsza rzecz, o którą pyta klient.
+ */
+/**
+ * Emudo activo na starcie. En `both` el primero es B (obłogi i lamele): es
+ * lo primero que pregunta quien escribe y lo que da nombre a la casa.
+ */
+const activeVariant: FunnelVariant = showBoth ? 'B' : (variant as FunnelVariant);
+
+/**
+ * Endpoint odbioru formularza.
+ *
+ * 1. `PUBLIC_QUOTE_ENDPOINT` — backend (np. Formspree / własne API / CMS SEO Grow).
+ * 2. Brak endpointu → formularz składa wiadomość e-mail (`mailto:`) i oferuje WhatsApp.
+ *
+ * Bez JavaScriptu formularz działa przez action/method:
+ * atrybut `novalidate` celowo NIE jest w znaczniku, więc przeglądarka
+ * sama pilnuje pól wymaganych i poprawnego formatu e-mail. Skrypt poniżej
+ * włącza `noValidate` dopiero u siebie, żeby zostawić własne komunikaty
+ * pod polami.
+ *
+ * Dwa tryby, zależnie od tego, czy jest endpoint:
+ *
+ * · `PUBLIC_QUOTE_ENDPOINT` ustawione → formularz jest ZWYKŁYM formularzem
+ *   webowym: `method="post"` + `action` na adres HTTP i `multipart/form-data`,
+ *   żeby odbiorca dostał pola (i załącznik) tak, jak przy klasycznym
+ *   formularzu HTML. Skrypt wysyła to samo przez `fetch` i po potwierdzeniu
+ *   pokazuje komunikat o sukcesie.
+ * · Bez endpointu → `action` wskazuje `mailto:` i `enctype="text/plain"`, żeby
+ *   treść maila wypełniła przeglądarka. To NIE jest wysłanie: po kliknięciu
+ *   mówimy wprost, że trzeba dokończyć w programie pocztowym, i dajemy
+ *   WhatsApp i telefon.
+ *
+ * Dodatkowo pod formularzem jest `<noscript>` z linkiem `mailto:` o treści
+ * już przygotowanej, żeby wyjście awaryjne nie zależało od przeglądarki.
+ */
+const endpoint = import.meta.env.PUBLIC_QUOTE_ENDPOINT ?? '';
+const contactEmail = company.contactEmail;
+const whatsappNumber = company.whatsappNumber;
+
+/**
+ * Ścieżka bieżącej strony — do payloadu i do treści wiadomości. Dzięki
+ * niej wiadomość mówi, KTÓRA strona wysłała zapytanie, a nie tylko jaki
+ * był kontekst. `Astro.url` zna prawdziwą ścieżkę w buildzie.
+ */
+const pagePath = Astro.url.pathname;
+
+/**
+ * Tekst wstępny WhatsAppa. Na karcie produktu nazywa produkt, w pozostałych
+ * stronach pyta o wycenę. Treść jest wypełniona od razu — to prawdziwy kanał
+ * klienta, a nie „dodatkowy" przycisk.
+ */
+const waIntro = preselect
+  ? tf(locale, 'wa.product', {
+      product: products.find((product) => product.id === preselect)?.name[locale] ?? '',
+    })
+  : t(locale, 'wa.quote');
+
+/**
+ * Komunikaty skryptu i etykiety w treści wiadomości — wszystkie w języku
+ * strony. Klucze pól formularza (`name`, `company`, `taxId`…) zostają
+ * po angielsku: to kontrakt z endpointem opisany w docs/CMS-INTEGRATION.md.
+ */
+const messages = {
+  required: t(locale, 'form.fieldRequired'),
+  email: t(locale, 'form.fieldEmail'),
+  consent: t(locale, 'form.fieldConsent'),
+  sending: t(locale, 'form.sending'),
+  successSent: t(locale, 'form.successSent'),
+  successMailto: t(locale, 'form.successMailto'),
+  resultTitle: t(locale, 'form.resultTitle'),
+  resultTitleSent: t(locale, 'form.resultTitleSent'),
+  error: t(locale, 'form.errorGeneric'),
+  statusRequired: t(locale, 'form.errorRequired'),
+  statusEmail: t(locale, 'form.errorEmail'),
+  mailSubject: t(locale, 'form.mailSubject'),
+  labelName: t(locale, 'form.body.name'),
+  labelCompany: t(locale, 'form.body.company'),
+  labelTaxId: t(locale, 'form.body.taxId'),
+  labelEmail: t(locale, 'form.body.email'),
+  labelPhone: t(locale, 'form.body.phone'),
+  labelProduct: t(locale, 'form.body.product'),
+  labelMessage: t(locale, 'form.body.message'),
+  labelContext: t(locale, 'form.body.context'),
+  labelFunnel: t(locale, 'form.body.funnel'),
+  labelPlace: t(locale, 'form.body.place'),
+  labelConsent: t(locale, 'form.body.consent'),
+  labelPage: t(locale, 'form.body.page'),
+  labelLocale: t(locale, 'form.body.locale'),
+  labelAttachments: t(locale, 'form.body.attachments'),
+  leadLine: formCopy.leadLine[locale],
+  consentYes: formCopy.consentYes[locale],
+  funnelNames: {
+    A: t(locale, 'form.funnelA'),
+    B: t(locale, 'form.funnelB'),
+  },
+  /** Etykiety pól w treści wiadomości — po nazwie pola. */
+  fieldLabels: {
+    A: Object.fromEntries(fieldsFor('A').map((field) => [field.name, field.label[locale]])),
+    B: Object.fromEntries(fieldsFor('B').map((field) => [field.name, field.label[locale]])),
+  } as Record<string, Record<string, string>>,
+  /** Wartości wybrane w `select` — po nazwie pola i wartości. */
+  optionLabels: {
+    A: {} as Record<string, Record<string, string>>,
+    B: Object.fromEntries(
+      fieldsFor('B')
+        .filter((field) => field.options)
+        .map((field) => [
+          field.name,
+          Object.fromEntries(
+            (field.options ?? [])
+              .filter((option) => option.value)
+              .map((option) => [option.value, option.label[locale]]),
+          ),
+        ]),
+    ),
+  } as Record<string, Record<string, string>>,
+};
+
+/** Adres `mailto:` awaryjny (bez JavaScriptu) — treść już przygotowana. */
+const mailtoFallback = `mailto:${contactEmail}?subject=${encodeURIComponent(
+  messages.mailSubject,
+)}&body=${encodeURIComponent(formCopy.mailtoTemplate[locale].join('\n'))}`;
+
+/**
+ * Nazwy pól do payloadu. Skrypt zbiera je jawnie, a nie przez `FormData`
+ * — `FormData` oddałby też wartości ukrytego zestawu pól, a do klienta
+ * poszłaby np. powierzchnia, o której nie pytaliśmy.
+ */
+const funnelFieldNames = {
+  A: fieldsFor('A').map((field) => field.name),
+  B: fieldsFor('B').map((field) => field.name),
+};
+
+/** Pola wspólne dla obu embudów — są w każdym zapytaniu. */
+const commonFieldNames = [
+  'name',
+  'email',
+  'company',
+  'taxId',
+  'phone',
+  'place',
+  'product',
+  'message',
+];
+---
+
+<form
+  class="form"
+  id={formId}
+  data-quote-form
+  data-endpoint={endpoint}
+  data-context={context}
+  data-page={pagePath}
+  data-locale={locale}
+  data-variant={showBoth ? 'both' : variant}
+  method="post"
+  action={endpoint || `mailto:${contactEmail}`}
+  enctype={endpoint ? 'multipart/form-data' : 'text/plain'}
+>
+  <p class="form__intro">{intro ?? t(locale, 'form.intro')}</p>
+
+  {/*
+    WYBÓR EMBUDU — jedno pytanie, dwa zestawy pól.
+
+    Radio + CSS, a nie JavaScript: przełączanie działa od razu, a formularz
+    nadaje się do wysłania `method="post"`, więc przeglądarka sama pilnuje
+    pól wymaganych. Pytanie stoi PRZED polami, bo gość musi wiedzieć, o co
+    go pytamy, zanim zobaczy zestaw pól.
+
+    UWAGA na nazwy pól: nazwy różnią się między embudami (`surface` w A,
+    `length` w B), więc oba zestawy mogą stać w DOM naraz. Ten, którego
+    gość nie wybrał, jest ukryty (`data-active`) — jego wartości nie
+    wychodzą w payloadzie ani w treści wiadomości, bo skrypt zbiera tylko
+    pola aktywnego embudu.
+  */}
+  {
+    showBoth && (
+      <fieldset class="form__choice">
+        <legend class="form__choice-legend">{funnelChoice.question[locale]}</legend>
+        <div class="form__choice-grid">
+          {funnelChoice.options.map((option) => (
+            <label class="form__choice-option" for={`${formId}-funnel-${option.value}`}>
+              <input
+                class="form__choice-input"
+                type="radio"
+                id={`${formId}-funnel-${option.value}`}
+                name={`${formId}-funnel`}
+                value={option.value}
+                checked={option.value === 'B'}
+              />
+              <Icon name={option.icon} class="form__choice-icon" />
+              <span class="form__choice-label">{option.label[locale]}</span>
+              <span class="form__choice-hint">{option.hint[locale]}</span>
+              <span class="form__choice-check" aria-hidden="true">
+                <Icon name="check" />
+              </span>
+            </label>
+          ))}
+        </div>
+      </fieldset>
+    )
+  }
+
+  {/*
+    ZESTAWY PÓL. Każdy wariant ma swój `<fieldset data-funnel>`; CSS
+    pokazuje ten, który odpowiada zaznaczonemu radio, i wyłącza (disable)
+    ten drugi — żeby nie było pól wymaganych poza wybranym.
+  */}
+  {
+    variants.map((entry) => (
+      <fieldset
+        class:list={['form__group', !showBoth && 'form__group--single']}
+        data-funnel={entry.id}
+        data-active={entry.id === activeVariant ? true : undefined}
+      >
+        <legend class="visually-hidden">
+          {funnelChoice.options.find((option) => option.value === entry.id)?.label[locale]}
+        </legend>
+
+        <div class="form__grid form__grid--two">
+          {entry.fields
+            .filter((field) => field.group !== 'extra')
+            .map((field) => (
+              <FormField
+                field={field}
+                locale={locale}
+                formId={formId}
+                nativeRequired={!showBoth}
+              />
+            ))}
+        </div>
+
+        {/*
+          Pola dodatkowe tego embudu — zwinięte, żeby nie obciążać pierwszego
+          ekranu na telefonie. Żadne z nich nie jest wymagane.
+        */}
+        {entry.fields.some((field) => field.group === 'extra') && (
+          <details class="form__more">
+            <summary class="form__more-summary">
+              <span class="form__more-icon" aria-hidden="true" />
+              {funnelExtras[entry.id].toggle[locale]}
+            </summary>
+            <div class="form__more-body">
+              <p class="form__more-intro">{funnelExtras[entry.id].intro[locale]}</p>
+              <div class="form__grid form__grid--two">
+                {entry.fields
+                  .filter((field) => field.group === 'extra')
+                  .map((field) => (
+                    <FormField
+                      field={field}
+                      locale={locale}
+                      formId={formId}
+                      nativeRequired={false}
+                    />
+                  ))}
+              </div>
+            </div>
+          </details>
+        )}
+      </fieldset>
+    ))
+  }
+
+  <!--
+    KROK 1 — pola, bez których wycena się nie udaje:
+    produkt, wymiary + ilość, kontakt (imię i e-mail).
+    Reszta (firma, NIP, telefon) jest w kroku 2, pod zwijanym `<details>`:
+    działa bez JavaScriptu i jest zwinięty, więc nie obciąża pierwszego kroku.
+  -->
+  <div class="form__grid form__grid--two">
+    <div class="field" data-field="name">
+      <label class="field__label" for={`${formId}-name`}>
+        {t(locale, 'form.name')}<span class="req" aria-hidden="true">*</span>
+      </label>
+      <input
+        class="field__control"
+        id={`${formId}-name`}
+        name="name"
+        type="text"
+        autocomplete="name"
+        required
+        aria-describedby={`${formId}-name-error`}
+      />
+      <p class="field__error" id={`${formId}-name-error`} data-error-for={`${formId}-name`} aria-live="polite"></p>
+    </div>
+
+    <div class="field" data-field="email">
+      <label class="field__label" for={`${formId}-email`}>
+        {t(locale, 'form.email')}<span class="req" aria-hidden="true">*</span>
+      </label>
+      <input
+        class="field__control"
+        id={`${formId}-email`}
+        name="email"
+        type="email"
+        autocomplete="email"
+        required
+        aria-describedby={`${formId}-email-error`}
+      />
+      <p class="field__error" id={`${formId}-email-error`} data-error-for={`${formId}-email`} aria-live="polite"></p>
+    </div>
+  </div>
+
+  <div class="field" data-field="product">
+    <label class="field__label" for={`${formId}-product`}>{t(locale, 'form.product')}</label>
+    <select class="field__control" id={`${formId}-product`} name="product">
+      <option value="">{t(locale, 'form.productSelect')}</option>
+      {
+        products.map((product) => (
+          <option
+            value={product.name[locale]}
+            data-product-id={product.id}
+            selected={product.id === preselect}
+          >
+            {product.name[locale]}
+          </option>
+        ))
+      }
+      <option value="other">{t(locale, 'form.other')}</option>
+    </select>
+  </div>
+
+  <div class="field" data-field="message">
+    <label class="field__label" for={`${formId}-message`}>
+      {formCopy.messageLabel[locale]}
+    </label>
+    <textarea
+      class="field__control"
+      id={`${formId}-message`}
+      name="message"
+      rows="5"
+      placeholder={formCopy.messagePlaceholder[locale]}
+      aria-describedby={`${formId}-message-error`}
+    ></textarea>
+    <p class="field__error" id={`${formId}-message-error`} data-error-for={`${formId}-message`} aria-live="polite"></p>
+  </div>
+
+  <!--
+    KROK 2 — opcjonalny. `<details>` zamiast przycisku + JS: działa bez
+    JavaScriptu, a sterowanie rozwinięciem jest w przeglądarce (a11y za darmo).
+    Żadne z tych pól nie jest wymagane, więc zwinięcie nie blokuje wysyłki.
+  -->
+  <details class="form__more">
+    <summary class="form__more-summary">
+      <span class="form__more-icon" aria-hidden="true"></span>
+      {formCopy.step2Toggle[locale]}
+    </summary>
+    <div class="form__more-body">
+      <p class="form__more-intro">{formCopy.step2Intro[locale]}</p>
+      <div class="form__grid form__grid--two">
+        <div class="field" data-field="company">
+          <label class="field__label" for={`${formId}-company`}>{t(locale, 'form.company')}</label>
+          <input
+            class="field__control"
+            id={`${formId}-company`}
+            name="company"
+            type="text"
+            autocomplete="organization"
+          />
+        </div>
+
+        {
+          showTaxId && (
+            <div class="field" data-field="taxId">
+              <label class="field__label" for={`${formId}-taxid`}>{t(locale, 'form.taxId')}</label>
+              <input
+                class="field__control"
+                id={`${formId}-taxid`}
+                name="taxId"
+                type="text"
+                inputmode="numeric"
+                autocomplete="off"
+              />
+            </div>
+          )
+        }
+
+        <div class="field" data-field="phone">
+          <label class="field__label" for={`${formId}-phone`}>{t(locale, 'form.phone')}</label>
+          <input
+            class="field__control"
+            id={`${formId}-phone`}
+            name="phone"
+            type="tel"
+            autocomplete="tel"
+          />
+        </div>
+
+        {/*
+          Miejsce dostawy jest WSPÓLNE dla obu embudów, więc stoi tutaj,
+          a nie w zestawie pól. W renderze dwóch zestawów byłby zrenderowany
+          dwa razy — dwa identyczne `id`, i formularz przestaje być poprawny.
+        */}
+        <div class="field" data-field="place">
+          <label class="field__label" for={`${formId}-place`}>
+            {formCopy.placeLabel[locale]}
+          </label>
+          <input
+            class="field__control"
+            id={`${formId}-place`}
+            name="place"
+            type="text"
+            autocomplete="address-level2"
+            aria-describedby={`${formId}-place-error`}
+          />
+          <p
+            class="field__error"
+            id={`${formId}-place-error`}
+            data-error-for={`${formId}-place`}
+            aria-live="polite"
+          />
+        </div>
+      </div>
+    </div>
+  </details>
+
+  <!-- Honeypot: ukryte pole, wypełniają je tylko boty. -->
+  <div class="visually-hidden" aria-hidden="true">
+    <label for={`${formId}-website`}>Website</label>
+    <input
+      id={`${formId}-website`}
+      name="website"
+      type="text"
+      tabindex="-1"
+      autocomplete="off"
+    />
+  </div>
+
+  <!--
+    ZAŁĄCZNIK — rysunek albo zdjęcie.
+
+    UWAGA: strona jest statyczna i nie ma backendu, więc pliku NIE da się
+    dołączyć do wiadomości. Dlatego do zapytania idzie tylko NAZWA pliku, a
+    pod formularzem jest to napisane wprost (reguła 14 AGENTS.md: formularz
+    mówi prawdę). Gość wysyła sam plik przez WhatsApp albo e-mail.
+  -->
+  <div class="form__attachment" data-attachment>
+    <Icon name="paperclip" class="form__attachment-icon" />
+    <div class="form__attachment-body">
+      <p class="form__attachment-label">
+        {t(locale, 'form.attachmentLabel')}{' '}
+        <span class="form__attachment-optional">{t(locale, 'form.attachmentOptional')}</span>
+      </p>
+      <p class="form__attachment-hint">{t(locale, 'form.attachmentHint')}</p>
+      <label class="btn btn--ghost btn--small" for={`${formId}-attachment`}>
+        {t(locale, 'form.attachmentButton')}
+      </label>
+      <p class="form__attachment-files" data-attachment-files aria-live="polite"></p>
+      <p class="form__attachment-note">{t(locale, 'form.attachmentNote')}</p>
+    </div>
+    <input
+      class="form__attachment-input"
+      id={`${formId}-attachment`}
+      type="file"
+      multiple
+      data-attachment-input
+      accept="image/*,.pdf,.dwg,.dxf"
+    />
+  </div>
+
+  <!-- `data-field="consent"` — dzięki temu skrypt czyści komunikat o braku
+       zgody po zaznaczeniu checkboxa i ustawia `data-invalid` na tej samej
+       zasadzie co przy pozostałych polach. -->
+  <div class="consent" data-field="consent">
+    <input id={`${formId}-consent`} name="consent" type="checkbox" required />
+    <label for={`${formId}-consent`}>
+      {t(locale, 'form.consent')}<span class="req" aria-hidden="true">*</span>{' '}
+      <a class="consent__link" href={pathFor(locale, 'privacy')}>
+        {t(locale, 'footer.cookies')}
+      </a>
+    </label>
+  </div>
+  <p class="field__error" id={`${formId}-consent-error`} data-error-for={`${formId}-consent`} aria-live="polite"></p>
+
+  <div class="form__actions">
+    <button
+      class="btn"
+      type="submit"
+      data-submit
+      aria-describedby={`${formId}-microcopy`}
+    >
+      {t(locale, 'form.submit')}
+    </button>
+    <a
+      class="btn btn--ghost"
+      data-whatsapp
+      href={whatsappUrl(waIntro)}
+      target="_blank"
+      rel="noopener"
+      title={t(locale, 'form.whatsappHint')}
+    >
+      {t(locale, 'form.whatsapp')}
+    </a>
+  </div>
+
+  <!-- Microcopy: co się dzieje po wysłaniu, co dostajesz i że nie ma zobowiązań. -->
+  <p class="form__microcopy" id={`${formId}-microcopy`}>
+    <strong class="form__microcopy-lead">{formCopy.promise[locale]}</strong>
+    {endpoint ? formCopy.whatHappens[locale] : formCopy.whatHappensMailto[locale]}{' '}
+    {formCopy.noCommitment[locale]}
+  </p>
+
+  <!-- Błąd walidacji: zawsze pod formularzem, w tym samym miejscu. -->
+  <p class="form__status" data-status role="status" aria-live="polite"></p>
+
+  <!--
+    Wynik — DWA wyjścia, i każde mówi prawdę:
+      • `sent`     — zapytanie dotarło do endpointu;
+      • `prepared` — otworzyliśmy klienta poczty, wiadomość jeszcze nie
+                     poszła. Przy nim pokazujemy WhatsApp i telefon, bo to
+                     jedyne wyjście, które działa bez backendu.
+    Bez endpointu NIGDY nie mówimy „dziękujemy, zapytanie zostało
+    przygotowane" i nie stawiamy `data-state="success"` — lead by zniknął.
+  -->
+  <div class="form__status form__status--result" data-result role="status" aria-live="polite">
+    <p class="form__status-title" data-result-title></p>
+    <p class="form__status-text" data-result-text></p>
+    <p class="form__status-actions" data-result-actions>
+      <a
+        class="btn btn--ghost"
+        data-result-whatsapp
+        href={whatsappUrl(waIntro)}
+        target="_blank"
+        rel="noopener"
+      >
+        {t(locale, 'form.whatsapp')}
+      </a>
+      <a class="btn btn--ghost" href={`tel:${company.phoneE164}`}>
+        {phoneDisplay(locale)}
+      </a>
+    </p>
+  </div>
+
+  <p class="form__fallback">
+    {t(locale, 'form.noJs')}{' '}
+    <a href={`tel:${company.phoneE164}`}><strong>{phoneDisplay(locale)}</strong></a>
+    {' · '}
+    <span>{company.contactPerson}</span>
+    {' · '}
+    <a href={pathFor(locale, 'contact')}>{t(locale, 'cta.write')}</a>
+  </p>
+
+  <!--
+    Wyjście awaryjne bez JavaScriptu: link `mailto:` z przygotowaną treścią.
+    Bez JS formularz waliduje przeglądarka, a ten link daje treść, której
+    `method="post"` nie zawsze dostarcza.
+  -->
+  <noscript>
+    <p class="form__noscript">
+      <a class="btn" href={mailtoFallback}>{formCopy.mailtoLabel[locale]}</a>
+      <span class="form__noscript-hint">{formCopy.mailtoHint[locale]}</span>
+    </p>
+  </noscript>
+</form>
+
+<script
+  define:vars={{ locale, endpoint, contactEmail, messages, formId, waIntro, whatsappNumber, funnelFieldNames, commonFieldNames, funnelByProduct }}
+>
+  const form = document.getElementById(formId);
+  if (form) {
+    // Bez JavaScriptu waliduje przeglądarka; skrypt przejmuje walidację
+    // i zostawia własne komunikaty pod polami.
+    form.noValidate = true;
+
+    const status = form.querySelector('[data-status]');
+    const result = form.querySelector('[data-result]');
+    const resultTitle = form.querySelector('[data-result-title]');
+    const resultText = form.querySelector('[data-result-text]');
+    const resultActions = form.querySelector('[data-result-actions]');
+    const resultWhatsapp = form.querySelector('[data-result-whatsapp]');
+    const submit = form.querySelector('[data-submit]');
+    const submitLabel = submit?.textContent?.trim() || '';
+    const msg = messages;
+
+    const fieldId = (name) => `${formId}-${name}`;
+
+    const setFieldError = (name, text) => {
+      const field = form.querySelector(`[data-field="${name}"]`);
+      const error = form.querySelector(`[data-error-for="${fieldId(name)}"]`);
+      if (field) field.setAttribute('data-invalid', text ? 'true' : 'false');
+      if (error) error.textContent = text || '';
+    };
+
+    /** Pierwsze niewypełnione pole — fokus trafia tam, a nie na kontener. */
+    const focusFirstInvalid = () => {
+      const invalid = form.querySelector('[data-invalid="true"]');
+      if (!invalid) return;
+      const control = invalid.querySelector('.field__control, input, textarea, select');
+      if (control) control.focus();
+    };
+
+    /**
+     * Który embudo jest wybrany. Wariant może być ustalony przez stronę
+     * (`data-variant="A"`) albo przez gościa (radio w `data-variant="both"`).
+     */
+    const activeFunnel = () => {
+      const mode = form.getAttribute('data-variant');
+      if (mode === 'A' || mode === 'B') return mode;
+      const checked = form.querySelector('input[name$="-funnel"]:checked');
+      return checked?.value === 'B' ? 'B' : 'A';
+    };
+
+    /**
+     * Włącz wybrany zestaw pól i ukryj drugi.
+     *
+     * `data-active` steruje tym, co widać (CSS). Skrypt nie wyłącza pól
+     * ukrytego zestawu, bo bez JavaScriptu byłyby wypełniane i blokowałyby
+     * wysyłkę. Zamiast tego zbiera dane JAWNIE — tylko z aktywnego embudu.
+     */
+    const syncFunnel = () => {
+      const active = activeFunnel();
+      form.querySelectorAll('.form__group[data-funnel]').forEach((group) => {
+        const isActive = group.getAttribute('data-funnel') === active;
+        group.toggleAttribute('data-active', isActive);
+      });
+      return active;
+    };
+
+    /**
+     * Dane do payloadu i do treści wiadomości.
+     *
+     * Jawna lista nazw, a nie `FormData`: `FormData` oddałby wartości
+     * ukrytego zestawu pól (albo obu naraz), a do klienta poszłaby liczba
+     * m², o której nie pytaliśmy. Kształt payloadu jest stały.
+     */
+    const collect = (funnel) => {
+      const data = {};
+      const names = [...(funnelFieldNames[funnel] || []), ...commonFieldNames];
+      names.forEach((name) => {
+        const el = form.querySelector(`[name="${name}"]`);
+        if (!el) return;
+        const value = (el.value || '').trim();
+        data[name] = value;
+      });
+      // Załączniki: sama nazwa pliku. Bez backendu plik nie idzie w treść
+      // wiadomości — idzie nazwa, a wysyłka jest osobnym krokiem (i tak
+      // napisane jest pod formularzem).
+      const files = form.querySelector('[data-attachment-input]');
+      if (files?.files?.length) {
+        data.attachments = Array.from(files.files)
+          .map((file) => file.name)
+          .join(', ');
+      }
+      return data;
+    };
+
+    const validate = () => {
+      let ok = true;
+      const funnel = syncFunnel();
+
+      ['name', 'email'].forEach((name) => {
+        const el = form.querySelector(`#${fieldId(name)}`);
+        const value = (el?.value || '').trim();
+        if (!value) {
+          setFieldError(name, msg.required);
+          ok = false;
+        } else if (name === 'email' && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(value)) {
+          setFieldError(name, msg.email);
+          ok = false;
+        } else {
+          setFieldError(name, '');
+        }
+      });
+
+      // Pola wymagane TYLKO w wybranym embudzie. Nazwy różnią się między
+      // embudami, więc sprawdzamy tylko pola w aktywnym zestawie.
+      const group = form.querySelector(`.form__group[data-funnel="${funnel}"]`);
+      const requiredNames = Array.from(
+        group?.querySelectorAll('.field[data-field]') ?? [],
+      )
+        .map((field) => field.getAttribute('data-field'))
+        .filter(
+          (name) =>
+            name &&
+            group.querySelector(`#${fieldId(name)}`)?.hasAttribute('data-required'),
+        );
+
+      requiredNames.forEach((name) => {
+        const el = form.querySelector(`#${fieldId(name)}`);
+        const value = (el?.value || '').trim();
+        if (!value) {
+          setFieldError(name, msg.required);
+          ok = false;
+        } else {
+          setFieldError(name, '');
+        }
+      });
+
+      const consent = form.querySelector(`#${fieldId('consent')}`);
+      if (consent && !consent.checked) {
+        setFieldError('consent', msg.consent);
+        ok = false;
+      } else {
+        setFieldError('consent', '');
+      }
+
+      return ok;
+    };
+
+    /**
+     * Tekst zapytania — używany w e-mailu i w WhatsApp.
+     *
+     * Pierwsza linia to metadane (`[lead] …`), potem pola w języku strony.
+     * Linia o zgodzie jest OBOWIĄZKOWA: art. 7.1 RODO wymaga dowodu, że
+     * gość wyraził zgodę — sama treść wiadomości musi o tym świadczyć.
+     */
+    const buildBody = (data) => {
+      const funnel = activeFunnel();
+      const labels = msg.fieldLabels[funnel] ?? {};
+      const optionLabels = msg.optionLabels[funnel] ?? {};
+      const page = form.getAttribute('data-page') || '';
+      const localeAttr = form.getAttribute('data-locale') || '';
+
+      const lines = [
+        `[lead] ${msg.labelFunnel}: ${msg.funnelNames[funnel]} · ${msg.labelContext}: ${
+          form.getAttribute('data-context') || ''
+        } · ${msg.labelPage}: ${page} · ${msg.labelLocale}: ${localeAttr}`,
+      ];
+
+      const fieldLines = Object.keys(labels)
+        .map((name) => {
+          const raw = (data[name] ?? '').toString().trim();
+          if (!raw) return '';
+          const readable = optionLabels[name]?.[raw] ?? raw;
+          return `${labels[name]}: ${readable}`;
+        })
+        .filter(Boolean);
+
+      return [
+        msg.leadLine,
+        '',
+        ...lines,
+        ...fieldLines,
+        data.name ? `${msg.labelName}: ${data.name}` : '',
+        data.company ? `${msg.labelCompany}: ${data.company}` : '',
+        data.taxId ? `${msg.labelTaxId}: ${data.taxId}` : '',
+        data.email ? `${msg.labelEmail}: ${data.email}` : '',
+        data.phone ? `${msg.labelPhone}: ${data.phone}` : '',
+        data.place ? `${msg.labelPlace}: ${data.place}` : '',
+        data.product ? `${msg.labelProduct}: ${data.product}` : '',
+        data.message ? `${msg.labelMessage}: ${data.message}` : '',
+        data.attachments ? `${msg.labelAttachments}: ${data.attachments}` : '',
+        // Dowód zgody — wymagany do przetwarzania danych w celu odpowiedzi.
+        `${msg.labelConsent}: ${msg.consentYes}`,
+      ]
+        .filter(Boolean)
+        .join('\n');
+    };
+
+    /**
+     * Wynik w bloku pod formularzem.
+     * @param {'sent'|'prepared'} state  'sent' = dotarło, 'prepared' = tylko przygotowane
+     */
+    const showResult = (state, title, text, withActions) => {
+      if (resultTitle) resultTitle.textContent = title;
+      if (resultText) resultText.textContent = text;
+      result?.setAttribute('data-state', state);
+      if (withActions) resultActions?.setAttribute('data-show', '');
+      else resultActions?.removeAttribute('data-show');
+    };
+
+    const clearResult = () => {
+      result?.removeAttribute('data-state');
+      resultActions?.removeAttribute('data-show');
+    };
+
+    // Wybrany embudo na starcie: w trybie `both` domyślnie B (obłogi),
+    // bo to jest pierwsza rzecz, o którą pyta klient.
+    syncFunnel();
+
+    /* ZAŁĄCZNIK — nazwy plików pokazujemy od razu, a przeciągnięcie pliku
+       na pudełko robi to samo co wybranie go z dysku. */
+    const attachmentBox = form.querySelector('[data-attachment]');
+    const attachmentInput = form.querySelector('[data-attachment-input]');
+    const attachmentFiles = form.querySelector('[data-attachment-files]');
+
+    const showAttachmentNames = () => {
+      if (!attachmentFiles || !attachmentInput) return;
+      const names = Array.from(attachmentInput.files || []).map((file) => file.name);
+      attachmentFiles.textContent = names.join(', ');
+      attachmentBox?.toggleAttribute('data-has-files', names.length > 0);
+    };
+
+    if (attachmentInput) {
+      attachmentInput.addEventListener('change', showAttachmentNames);
+    }
+
+    if (attachmentBox && attachmentInput) {
+      ['dragenter', 'dragover'].forEach((type) => {
+        attachmentBox.addEventListener(type, (event) => {
+          event.preventDefault();
+          attachmentBox.setAttribute('data-drag', 'true');
+        });
+      });
+      ['dragleave', 'drop'].forEach((type) => {
+        attachmentBox.addEventListener(type, () => {
+          attachmentBox.removeAttribute('data-drag');
+        });
+      });
+      attachmentBox.addEventListener('drop', (event) => {
+        event.preventDefault();
+        if (event.dataTransfer?.files?.length) {
+          attachmentInput.files = event.dataTransfer.files;
+          showAttachmentNames();
+        }
+      });
+    }
+
+    // Przełączenie embudu — radio. CSS pokazuje właściwy zestaw pól,
+    // a skrypt pilnuje `disabled` i czysci błędy z poprzedniego.
+    form.querySelectorAll('input[name$="-funnel"]').forEach((radio) => {
+      radio.addEventListener('change', () => {
+        const funnel = syncFunnel();
+        form
+          .querySelectorAll(`.form__group[data-funnel]:not([data-funnel="${funnel}"]) .field`)
+          .forEach((field) => {
+            const name = field.getAttribute('data-field');
+            if (name) setFieldError(name, '');
+          });
+      });
+    });
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+
+      // Boty wypełniają ukryte pole.
+      const honeypot = form.querySelector(`#${fieldId('website')}`);
+      if (honeypot && honeypot.value) return;
+
+      if (!validate()) {
+        const emailInvalid = form.querySelector('[data-field="email"][data-invalid="true"]');
+        if (status) {
+          status.textContent = emailInvalid ? msg.statusEmail : msg.statusRequired;
+          status.setAttribute('data-state', 'error');
+        }
+        focusFirstInvalid();
+        return;
+      }
+
+      if (status) {
+        status.textContent = '';
+        status.removeAttribute('data-state');
+      }
+      clearResult();
+
+      const funnel = activeFunnel();
+      const data = collect(funnel);
+      const attachmentNames = Array.from(
+        form.querySelector('[data-attachment-input]')?.files || [],
+      ).map((file) => file.name);
+      const endpointUrl = form.getAttribute('data-endpoint');
+      const productSelect = form.querySelector(`#${fieldId('product')}`);
+      const selectedProduct = productSelect?.value || '';
+
+      if (submit) {
+        submit.disabled = true;
+        submit.textContent = msg.sending;
+      }
+
+      if (endpointUrl) {
+        try {
+          const response = await fetch(endpointUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+            body: JSON.stringify({
+              ...data,
+              attachments: attachmentNames,
+              funnel,
+              context: form.getAttribute('data-context'),
+              page: form.getAttribute('data-page'),
+              locale: form.getAttribute('data-locale'),
+              consent: true,
+            }),
+          });
+          if (!response.ok) throw new Error(String(response.status));
+          form.reset();
+          // Nie zgubmy produktu wybranego z adresu (?produkt=…).
+          if (productSelect && selectedProduct) productSelect.value = selectedProduct;
+          showResult('sent', msg.resultTitleSent, msg.successSent, false);
+          return;
+        } catch (error) {
+          if (status) {
+            status.textContent = msg.error;
+            status.setAttribute('data-state', 'error');
+          }
+          return;
+        } finally {
+          if (submit) {
+            submit.disabled = false;
+            submit.textContent = submitLabel;
+          }
+        }
+      }
+
+      // Bez backendu: otwieramy klienta poczty z gotową treścią.
+      // To NIE jest wysłanie — mówimy o tym wprost i dajemy WhatsApp i telefon.
+      const body = buildBody(data);
+      window.location.href = `mailto:${contactEmail}?subject=${encodeURIComponent(
+        msg.mailSubject,
+      )}&body=${encodeURIComponent(body)}`;
+
+      if (resultWhatsapp) {
+        resultWhatsapp.setAttribute(
+          'href',
+          `https://wa.me/${whatsappNumber}?text=${encodeURIComponent([waIntro, '', body].join('\n'))}`,
+        );
+      }
+      showResult('prepared', msg.resultTitle, msg.successMailto, true);
+      if (submit) {
+        submit.disabled = false;
+        submit.textContent = submitLabel;
+      }
+    });
+
+    /**
+     * Produkt może przyjść w adresie: `/cennik/?produkt=oblog-debowy-ciety`.
+     * Strona jest statyczna, więc parametr czyta skrypt w przeglądarce,
+     * a nie build — inaczej link z karty produktu gubiłby wybór.
+     */
+    const select = form.querySelector(`#${fieldId('product')}`);
+    if (select && !select.value) {
+      const wanted = new URLSearchParams(window.location.search).get('produkt');
+      if (wanted) {
+        const option = select.querySelector(
+          `option[data-product-id="${CSS.escape(wanted)}"]`,
+        );
+        if (option) {
+          select.value = option.value;
+
+          /*
+           * El producto dice cuál es el embudo. Quien llega desde «Zapytaj o
+           * panele sufitowe» ya ha dicho de qué va la consulta: preguntarle
+           * otra vez entre paneles y listones es ruido.
+           */
+          const funnel = funnelByProduct[wanted];
+          if (funnel) {
+            const radio = form.querySelector(
+              `input[name$="-funnel"][value="${CSS.escape(funnel)}"]`,
+            );
+            if (radio) {
+              radio.checked = true;
+              radio.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+          }
+        }
+      }
+    }
+
+    // WhatsApp: doklejamy zawartość formularza do gotowej wiadomości.
+    const waLink = form.querySelector('[data-whatsapp]');
+    if (waLink) {
+      waLink.addEventListener('click', () => {
+        const data = collect(activeFunnel());
+        const text = [waIntro, '', buildBody(data)].join('\n');
+        waLink.setAttribute(
+          'href',
+          `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(text)}`,
+        );
+      });
+    }
+
+    form.addEventListener('input', (event) => {
+      const target = event.target;
+      if (target instanceof HTMLElement) {
+        const field = target.closest('[data-field]');
+        if (field) setFieldError(field.getAttribute('data-field'), '');
+      }
+    });
+  }
+</script>

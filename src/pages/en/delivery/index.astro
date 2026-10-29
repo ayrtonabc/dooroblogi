@@ -1,0 +1,23 @@
+---
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import DeliveryView from '../../../views/DeliveryView.astro';
+
+const locale = 'en' as const;
+const path = '/en/delivery/';
+
+const alternates = {
+  pl: '/dostawa/',
+  en: '/en/delivery/',
+  de: '/de/lieferung/',
+} as Partial<Record<typeof locale, string>>;
+---
+
+<BaseLayout
+  locale={locale}
+  path={path}
+  title="Delivery and payment — oak trim battens"
+  description="Oak trim battens by courier within Poland, packaging matched to the order, lead time in the quote. Shipping outside Poland quoted individually."
+  alternates={alternates}
+>
+  <DeliveryView locale={locale} />
+</BaseLayout>

@@ -1,0 +1,51 @@
+---
+import { company } from '../content/company';
+import type { Locale } from '../i18n';
+
+interface Props {
+  locale: Locale;
+  /** Wersja na ciemne tło: logo jest ciemne na jasnym, więc je odwracamy. */
+  invert?: boolean;
+  class?: string;
+}
+
+const { locale, invert = false, class: className } = Astro.props;
+---
+
+<img
+  class:list={['brand-logo', invert && 'brand-logo--invert', className]}
+  src="/images/logo-web.webp"
+  alt={company.logoAlt[locale]}
+  width="900"
+  height="209"
+  loading="eager"
+  decoding="async"
+/>
+
+<style>
+  /* Wysokość logo dobierana do miejsca w pasku: na wąskich ekranach
+     węższy pasek nie mieści logo + flag + przycisku „Menu" (zmierzone:
+     442 px treści przy 370 px dostępnych na 390 px). */
+  .brand-logo {
+    display: block;
+    width: auto;
+    height: 1.85rem;
+  }
+
+  @media (min-width: 30rem) {
+    .brand-logo {
+      height: 2.15rem;
+    }
+  }
+
+  @media (min-width: 36rem) {
+    .brand-logo {
+      height: 2.5rem;
+    }
+  }
+
+  /* Ciemne tło: logo jest ciemne na jasnym, więc odwracamy je na białe. */
+  .brand-logo--invert {
+    filter: brightness(0) invert(1);
+  }
+</style>

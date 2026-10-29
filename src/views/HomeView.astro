@@ -1,0 +1,570 @@
+---
+import { getImage, Image } from 'astro:assets';
+import SectionHead from '../components/SectionHead.astro';
+import ProductCard from '../components/ProductCard.astro';
+import FaqList from '../components/FaqList.astro';
+import CtaBand from '../components/CtaBand.astro';
+import Icon from '../components/Icon.astro';
+import { image } from '../content/images';
+import { heroImage } from '../content/hero';
+import { sortedProducts } from '../content/products';
+import { home, media } from '../content/pages';
+import { definition, definitionParts } from '../content/definitions';
+import {
+  definitionStats,
+  hero,
+  material,
+  pricing,
+  realizations,
+  services,
+} from '../content/home-sections';
+import { sedoPanels, sedoVariants } from '../content/sedo';
+import { company, phoneDisplay } from '../content/company';
+import { pathFor, productPath, quoteHref, type Locale } from '../i18n';
+import { t } from '../i18n/ui';
+
+interface Props {
+  locale: Locale;
+}
+
+const { locale } = Astro.props;
+
+/** Definicja podzielona na „przed terminem / termin / po terminie". */
+const defParts = definitionParts(locale);
+
+/**
+ *Zdjęcie hero. Renderujemy znacznik `<img>` ręcznie zamiast przez
+ * komponent `<Image>`, bo Astro składa atrybuty dynamiczne funkcją
+ * `addAttribute()`, która pustą wartość zamienia na atrybut bez wartości
+ * (`alt` zamiast `alt=""`). Hero jest tłem pod gradientem i nie niesie
+ * informacji, których nie ma w nagłówku ani w leadzie — więc `alt=""`
+ * z jawną wartością, a nie pusty atrybut.
+ */
+/**
+ * Zdjęcie hero. Renderujemy znacznik `<img>` ręcznie zamiast przez
+ * komponent `<Image>`, bo Astro składa atrybuty dynamiczne funkcją
+ * `addAttribute()`, która pustą wartość zamienia na atrybut bez wartości
+ * (`alt` zamiast `alt=""`). Hero jest tłem pod gradientem i nie niesie
+ * informacji, których nie ma w nagłówku ani w leadzie — więc `alt=""`
+ * z jawną wartością, a nie pusty atrybut.
+ *
+ * `srcset` pochodzi z tego samego generatora co preload w plikach
+ * `src/pages/index.astro` (y sus equivalentes EN/DE), więc oba znaczniki
+ * opisują te same pliki.
+ */
+const heroAsset = await heroImage();
+
+/** Ficha del obłóg cięty: allí vive la tabla completa de parámetros. */
+const trimProduct = sortedProducts.find((product) => product.id === 'oblog-debowy-ciety');
+const trimHref = trimProduct ? productPath(locale, trimProduct.slug[locale]) : pathFor(locale, 'catalog');
+
+/** Los techos primero: el brief del cliente pide prioridad para los paneles. */
+const homeProducts = [...sortedProducts].sort(
+  (a, b) => Number(b.id === 'panele-dabowe') - Number(a.id === 'panele-dabowe'),
+);
+
+/** Canales de contacto directos (el brief pide e-mail y Facebook visibles). */
+const contactChannels = [
+  {
+    label: t(locale, 'contact.phone'),
+    value: phoneDisplay(locale),
+    href: `tel:${company.phoneE164}`,
+  },
+  {
+    label: t(locale, 'contact.email'),
+    value: company.contactEmail,
+    href: `mailto:${company.contactEmail}`,
+  },
+  { label: 'Facebook', value: 'Doors Obłogi', href: company.facebookUrl },
+];
+---
+
+<!--
+  HERO — la promesa sigue siendo el obłóg (keyword principal de la home),
+  pero el primer renglón ya nombra los tres servicios del cliente y el lead
+  abre por los paneles de techo.
+-->
+<section class="hero">
+  <div class="hero__media">
+    <!--
+      Deriva infinita: la pista lleva la foto y su reflejo, y se desplaza dos
+      anchuras de pantalla, de modo que al reiniciar el bucle la imagen vuelve
+      exactamente al punto de partida y no tiene principio ni final.
+
+      Las TRES copias hacen falta para eso:
+        1. la foto,
+        2. su ESPEJO (el borde derecho de una copia es el izquierdo de la otra:
+           el empalme cae en un eje de simetría, no en un corte de la foto),
+        3. la foto otra vez, para que el reinicio del bucle devuelva la misma
+           imagen y no un volcado.
+
+      La luz de la veta y su máscara van DENTRO de cada copia: si se quedaran
+      quietas en el marco, el brillo dejaría de coincidir con el grano en
+      cuanto la foto se moviese.
+
+      Las copias 2 y 3 son decorativas (mismo archivo, el navegador lo cachea):
+      `aria-hidden` y `alt` vacío.
+    -->
+    <div class="hero__track">
+      <div class="hero__copy">
+        <img
+          src={heroAsset.src}
+          srcset={heroAsset.srcset}
+          sizes={heroAsset.sizes}
+          alt=""
+          width={heroAsset.width}
+          height={heroAsset.height}
+          loading="eager"
+          fetchpriority="high"
+          decoding="async"
+        />
+        <span class="hero__grain" aria-hidden="true"><span class="hero__grain-band"></span></span>
+      </div>
+      <div class="hero__copy hero__copy--mirror">
+        <img
+          src={heroAsset.src}
+          srcset={heroAsset.srcset}
+          sizes={heroAsset.sizes}
+          alt=""
+          width={heroAsset.width}
+          height={heroAsset.height}
+          loading="eager"
+          decoding="async"
+          aria-hidden="true"
+        />
+        <span class="hero__grain" aria-hidden="true"><span class="hero__grain-band"></span></span>
+      </div>
+      <div class="hero__copy">
+        <img
+          src={heroAsset.src}
+          srcset={heroAsset.srcset}
+          sizes={heroAsset.sizes}
+          alt=""
+          width={heroAsset.width}
+          height={heroAsset.height}
+          loading="eager"
+          decoding="async"
+          aria-hidden="true"
+        />
+        <span class="hero__grain" aria-hidden="true"><span class="hero__grain-band"></span></span>
+      </div>
+    </div>
+  </div>
+  <div class="container">
+    <div class="hero__inner">
+      <p class="kicker">{hero.eyebrow[locale]}</p>
+      <h1 class="hero__title" data-anim-headline>{home.hero.title[locale]}</h1>
+      <p class="hero__lead">{hero.lead[locale]}</p>
+      <div class="hero__actions">
+        <a class="btn" href={quoteHref(locale)}>{t(locale, 'cta.quote')}</a>
+        <a class="link-arrow hero__link" href={trimHref}>{t(locale, 'cta.products')}</a>
+      </div>
+      <ul class="hero__facts">
+        {
+          home.hero.facts.map((fact) => (
+            <li class="hero__fact">
+              <Icon name={fact.icon} />
+              <span>{fact.text[locale]}</span>
+            </li>
+          ))
+        }
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!--
+  SUFITY — el bloque que el cliente quiere que domine, según su maqueta
+  (28/10). Dos franjas seguidas:
+
+  01 · Franja alta: el texto a la izquierda (rótulo, titular, entradilla,
+  tres características con icono y los dos botones) y la foto a la derecha,
+  sangrada hasta el borde de la pantalla. Superficie CLARA: veníamos de dos
+  bloques oscuros seguidos y la alternancia clara/oscura se había roto.
+
+  02 · Franja baja: las dos selecciones (leyenda + las dos fotos del
+  material) y a la derecha la tarjeta del «sistema» con sus dos salidas.
+  Sustituye a la antigua sección «Selección», que ocupaba más alto que el
+  texto que explicaba y estaba en otra parte de la home.
+-->
+<section class="section section--cream sedo" id="sufity">
+  <div class="sedo__grid">
+    <div class="sedo__body">
+      <p class="kicker">{sedoPanels.kicker[locale]}</p>
+      <h2 class="sedo__title">{sedoPanels.title[locale]}</h2>
+      <p class="sedo__lead">{sedoPanels.lead[locale]}</p>
+
+      <ul class="sedo__features">
+        {
+          sedoPanels.features.map((feature) => (
+            <li class="sedo__feature">
+              <Icon name={feature.icon} class="sedo__feature-icon" />
+              <h3 class="sedo__feature-title">{feature.title[locale]}</h3>
+              <p class="sedo__feature-text">{feature.text[locale]}</p>
+            </li>
+          ))
+        }
+      </ul>
+
+      <p class="sedo__closing">{sedoPanels.closing[locale]}</p>
+
+      <div class="btn-row">
+        <a class="btn" href={quoteHref(locale, '?produkt=panele-dabowe')}>
+          {sedoPanels.cta[locale]}
+          <Icon name="arrow" class="btn__icon" />
+        </a>
+        <a class="btn btn--ghost" href={pathFor(locale, 'catalog')}>
+          {sedoPanels.ctaSecondary[locale]}
+          <Icon name="arrow" class="btn__icon" />
+        </a>
+      </div>
+    </div>
+
+    <figure class="sedo__figure">
+      <Image
+        src={image(sedoPanels.photo.src)}
+        alt={sedoPanels.photo.alt[locale]}
+        widths={[640, 960, 1200, 1600]}
+        sizes="(min-width: 62rem) 50vw, 92vw"
+        loading="lazy"
+        decoding="async"
+      />
+      <figcaption class="sedo__caption">
+        {sedoPanels.photo.caption[locale]}
+      </figcaption>
+    </figure>
+  </div>
+</section>
+
+<!-- 02 · Las dos selecciones + la tarjeta del sistema. -->
+<section class="section section--paper sedo-variants">
+  <div class="container">
+    <div class="sedo-variants__grid">
+      <div class="sedo-variants__intro">
+        <p class="kicker">{sedoVariants.kicker[locale]}</p>
+        <h2 class="sedo-variants__title">{sedoVariants.title[locale]}</h2>
+        <p class="sedo-variants__lead">{sedoVariants.lead[locale]}</p>
+
+        <ul class="sedo-variants__legend">
+          {
+            sedoVariants.legend.map((item, index) => (
+              <li class="sedo-variants__legend-item">
+                <span
+                  class="sedo-variants__thumb"
+                  style={`--thumb: url('${image(sedoVariants.shots[index].src).src}')`}
+                />
+                <div>
+                  <h3 class="sedo-variants__legend-title">{item.title[locale]}</h3>
+                  <p class="sedo-variants__legend-text">{item.text[locale]}</p>
+                </div>
+              </li>
+            ))
+          }
+        </ul>
+      </div>
+
+      <div class="sedo-variants__shots">
+        {
+          sedoVariants.shots.map((shot) => (
+            <figure class="sedo-variants__shot">
+              <div class="sedo-variants__shot-media">
+                <Image
+                  src={image(shot.src)}
+                  alt={shot.alt[locale]}
+                  widths={[400, 640, 960]}
+                  sizes="(min-width: 62rem) 22vw, 45vw"
+                  loading="lazy"
+                  decoding="async"
+                />
+                <span class="sedo-variants__chip">{shot.chip[locale]}</span>
+              </div>
+              <figcaption class="sedo-variants__shot-caption">{shot.caption[locale]}</figcaption>
+            </figure>
+          ))
+        }
+      </div>
+
+      <aside class="sedo-variants__card">
+        <h3 class="sedo-variants__card-title">{sedoVariants.system.title[locale]}</h3>
+        <p class="sedo-variants__card-text">{sedoVariants.system.text[locale]}</p>
+
+        <ul class="sedo-variants__uses">
+          {
+            sedoVariants.system.uses.map((use) => (
+              <li class="sedo-variants__use">
+                <Icon name={use.icon} class="sedo-variants__use-icon" />
+                <span>{use.label[locale]}</span>
+              </li>
+            ))
+          }
+        </ul>
+
+        <div class="btn-row">
+          <a class="btn" href={quoteHref(locale, '?produkt=panele-dabowe')}>
+            {sedoVariants.system.cta[locale]}
+            <Icon name="arrow" class="btn__icon" />
+          </a>
+          <a class="btn btn--link" href={`tel:${company.phoneE164}`}>
+            <Icon name="phone" class="btn__icon" />
+            {sedoVariants.system.ctaCall[locale]}
+          </a>
+        </div>
+      </aside>
+    </div>
+  </div>
+</section>
+
+<!--
+  02 · MATERIAŁ — bloque oscuro a dos columnas: foto grande a la izquierda y,
+  a la derecha, la definición más cuatro filas con icono (los mismos hechos
+  que ya publica la web, sin datos nuevos).
+-->
+<section class="section section--dark material" id="material">
+  <div class="container">
+    <div class="material__grid">
+      <figure class="figure material__figure">
+        <Image
+          src={image('oblog-na-desce.jpg')}
+          alt={media.home.wallAlt[locale]}
+          widths={[480, 720, 960]}
+          sizes="(min-width: 62rem) 44vw, 92vw"
+          loading="lazy"
+          decoding="async"
+        />
+        <figcaption class="figure__caption">{media.home.wallCaption[locale]}</figcaption>
+      </figure>
+
+      <div class="material__body">
+        <SectionHead
+          kicker={material.kicker[locale]}
+          title={material.title[locale]}
+        />
+        <p class="material__lead">
+          {defParts.before}<dfn id="definicja">{defParts.term}</dfn>{defParts.after}{' '}
+          {definition.application[locale]}
+        </p>
+
+        <ul class="material__rows">
+          {
+            material.rows.map((row) => (
+              <li class="material__row">
+                <span class="material__icon" aria-hidden="true">
+                  <Icon name={row.icon} />
+                </span>
+                <div>
+                  <h3 class="material__row-title">{row.title[locale]}</h3>
+                  <p class="material__row-text">{row.text[locale]}</p>
+                </div>
+              </li>
+            ))
+          }
+        </ul>
+
+        <p class="material__specs">
+          <a class="link-arrow" href={trimHref}>{definitionStats.specsLink[locale]}</a>
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!--
+  04 · RZEMIOSŁO — franja de tres columnas: foto, texto, foto.
+-->
+<section class="section section--cream craft">
+  <div class="container">
+    <div class="craft__grid">
+      <figure class="craft__figure">
+        <Image
+          src={image('profil-oblogu.jpg')}
+          alt={media.home.wallAlt[locale]}
+          widths={[400, 640, 960]}
+          sizes="(min-width: 62rem) 26vw, 92vw"
+          loading="lazy"
+          decoding="async"
+        />
+      </figure>
+
+      <div class="craft__body">
+        <SectionHead
+          kicker={home.intro.kicker[locale]}
+          title={home.intro.title[locale]}
+        />
+        <div class="prose">
+          {home.intro.body[locale].slice(0, 2).map((paragraph) => <p>{paragraph}</p>)}
+        </div>
+        <p class="mt-lg">
+          <a class="link-arrow" href={pathFor(locale, 'about')}>{t(locale, 'nav.about')}</a>
+        </p>
+      </div>
+
+      <figure class="craft__figure">
+        <Image
+          src={image('oblog-w-scianie.jpg')}
+          alt={media.home.wallCaption[locale]}
+          widths={[400, 640, 960]}
+          sizes="(min-width: 62rem) 26vw, 92vw"
+          loading="lazy"
+          decoding="async"
+        />
+      </figure>
+    </div>
+  </div>
+</section>
+
+<!-- 04 · OFERTA — los paneles de techo abren la rejilla. -->
+<section class="section section--paper" id="oferta">
+  <div class="container">
+    <SectionHead
+      kicker={home.products.kicker[locale]}
+      title={home.products.title[locale]}
+      lede={home.products.body[locale]}
+      split
+    />
+    <div class="grid-products">
+      {
+        homeProducts.map((product) => (
+          <ProductCard product={product} locale={locale} />
+        ))
+      }
+    </div>
+    <p class="mt-lg">
+      <a class="link-arrow" href={pathFor(locale, 'catalog')}>{t(locale, 'cta.allProducts')}</a>
+    </p>
+  </div>
+</section>
+
+<!-- 05 · SERVICIOS — sufity, puertas y escaleras. -->
+<section class="section section--sand" id="uslugi">
+  <div class="container">
+    <SectionHead
+      kicker={services.kicker[locale]}
+      title={services.title[locale]}
+      lede={services.lead[locale]}
+      split
+    />
+    <ul class="services">
+      {
+        services.items.map((item) => (
+          <li class="service">
+            <figure class="service__figure">
+              <Image
+                src={image(item.image)}
+                alt={item.alt[locale]}
+                widths={[320, 480, 720]}
+                sizes="(min-width: 48rem) 30vw, 92vw"
+                loading="lazy"
+                decoding="async"
+              />
+            </figure>
+            <h3 class="service__name">{item.name[locale]}</h3>
+            <p class="service__text">{item.text[locale]}</p>
+          </li>
+        ))
+      }
+    </ul>
+  </div>
+</section>
+
+<!--
+  07 · REALIZACJE — galería horizontal anclada (GSAP la fija y la desplaza
+  con el scroll en escritorio; en móvil se desliza con el dedo).
+-->
+<section class="section section--paper" id="realizacje">
+  <div class="container">
+    <div class="strip__head">
+      <SectionHead
+        kicker={realizations.kicker[locale]}
+        title={realizations.title[locale]}
+        lede={realizations.lead[locale]}
+      />
+      <p class="strip__link">
+        <a class="link-arrow" href={pathFor(locale, 'gallery')}>{realizations.link[locale]}</a>
+      </p>
+    </div>
+    <ul class="strip">
+      {
+        realizations.items.map((item) => (
+          <li class="strip__item">
+            <figure class="strip__figure">
+              <Image
+                src={image(item.src)}
+                alt={item.caption[locale]}
+                widths={[320, 480, 720]}
+                sizes="(min-width: 62rem) 24vw, (min-width: 40rem) 46vw, 92vw"
+                loading="lazy"
+                decoding="async"
+              />
+            </figure>
+            <p class="strip__caption">{item.caption[locale]}</p>
+          </li>
+        ))
+      }
+    </ul>
+  </div>
+</section>
+
+<!-- 08 · CENNIK I WYCENA — canal directo: precio, e-mail, Facebook. -->
+<section class="section section--cream" id="wycena">
+  <div class="container">
+    <div class="quote-block">
+      <div>
+        <SectionHead
+          kicker={pricing.kicker[locale]}
+          title={pricing.title[locale]}
+        />
+        <p class="quote-block__lead">{pricing.lead[locale]}</p>
+        <ul class="quote-block__bullets">
+          {pricing.bullets.map((bullet) => <li>{bullet[locale]}</li>)}
+        </ul>
+        <div class="btn-row">
+          <a class="btn" href={quoteHref(locale)}>{pricing.cta[locale]}</a>
+          <a class="btn btn--ghost" href={`${pathFor(locale, 'quote')}#jak-liczymy-cene`}>
+            {pricing.priceListLink[locale]}
+          </a>
+        </div>
+      </div>
+      <aside class="contact-card" aria-label={t(locale, 'nav.contact')}>
+        <p class="contact-card__title">{t(locale, 'nav.contact')}</p>
+        <ul class="contact-card__list">
+          {
+            contactChannels.map((channel) => (
+              <li>
+                <span class="contact-card__label">{channel.label}</span>
+                <a class="contact-card__value" href={channel.href}>
+                  {channel.value}
+                </a>
+              </li>
+            ))
+          }
+        </ul>
+        <p class="contact-card__meta">{company.contactPerson}</p>
+        <p class="contact-card__meta">{company.shippingNote[locale]}</p>
+      </aside>
+    </div>
+  </div>
+</section>
+
+<section class="section section--paper" id="faq">
+  <div class="container">
+    <SectionHead
+      kicker={home.faq.kicker[locale]}
+      title={home.faq.title[locale]}
+      lede={home.faq.lead[locale]}
+      split
+    />
+    <FaqList locale={locale} />
+  </div>
+</section>
+
+<CtaBand
+  variant="dark"
+  align="center"
+  title={t(locale, 'home.ctaTitle')}
+  text={t(locale, 'home.ctaText')}
+  primaryLabel={t(locale, 'cta.quote')}
+  primaryHref={quoteHref(locale)}
+  secondaryLabel={t(locale, 'cta.call')}
+  secondaryHref={`tel:${company.phoneE164}`}
+/>
+

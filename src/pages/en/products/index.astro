@@ -1,0 +1,23 @@
+---
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import CatalogView from '../../../views/CatalogView.astro';
+
+const locale = 'en' as const;
+const path = '/en/products/';
+
+const alternates = {
+  pl: '/produkty/',
+  en: '/en/products/',
+  de: '/de/produkte/',
+} as Partial<Record<typeof locale, string>>;
+---
+
+<BaseLayout
+  locale={locale}
+  path={path}
+  title="Oak trim battens, oak battens and panels"
+  description="Oak trim battens, 4–8 mm oak battens and ready-made ceiling and wall panels — four products from one natural oak, cut to size. Request a quote."
+  alternates={alternates}
+>
+  <CatalogView locale={locale} />
+</BaseLayout>

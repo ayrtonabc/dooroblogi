@@ -1,0 +1,32 @@
+---
+import SectionHead from './SectionHead.astro';
+import { terms } from '../content/terms';
+import { t } from '../i18n/ui';
+import type { Locale } from '../i18n';
+
+interface Props {
+  locale: Locale;
+  /** Nagłówek nad tabelą — domyślnie z `terms`. */
+  title?: string;
+  lead?: string;
+}
+
+const { locale, title, lead } = Astro.props;
+---
+
+<SectionHead kicker={terms.kicker[locale]} title={title ?? terms.title[locale]} lede={lead} />
+<div class="specs">
+  {
+    terms.rows.map((row) => (
+      <div class="specs__row">
+        <div class="specs__label">{row.label[locale]}</div>
+        <div class="specs__value">
+          {row.value[locale]}
+          {!row.confirmed && (
+            <span class="specs__note">{t(locale, 'specs.confirmedInQuote')}</span>
+          )}
+        </div>
+      </div>
+    ))
+  }
+</div>

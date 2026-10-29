@@ -1,0 +1,63 @@
+---
+import { pricing, priceFlow } from '../content/pricing';
+import { t } from '../i18n/ui';
+import type { Locale } from '../i18n';
+import Icon from './Icon.astro';
+
+interface Props {
+  locale: Locale;
+  /** Id produktu — podajemy jednostkę sprzedaży i czynniki ceny. */
+  productId?: string;
+}
+
+const { locale, productId } = Astro.props;
+
+const entry = productId ? pricing[productId] : undefined;
+---
+
+<!--
+  BLOQUE DE PRECIO — tres puntos con icono, como el bloque SEDO de la home:
+  unidad de venta · de qué depende el precio · qué abarca la oferta. La
+  fila de la tabla se leía como un dato suelto; aquí cada punto tiene su
+  icono y respira.
+
+  Debajo, fuera de la lista, la política de precios: no es un parámetro más,
+  es la respuesta a «¿cuánto cuesta?».
+-->
+<ul class="pf-list">
+  {
+    entry && (
+      <li class="pf-list__item">
+        <Icon name="ruler" class="pf-list__icon" />
+        <span class="pf-list__label">{t(locale, 'seo.unitTitle')}</span>
+        <span class="pf-list__value">
+          {entry.unit[locale]}
+          {entry.published ? ` · ${entry.published.min}–${entry.published.max} ${entry.published.currency}` : ''}
+        </span>
+      </li>
+    )
+  }
+  {
+    entry && (
+      <li class="pf-list__item">
+        <Icon name="stack" class="pf-list__icon" />
+        <span class="pf-list__label">{t(locale, 'seo.factorsTitle')}</span>
+        <span class="pf-list__value">{entry.factors[locale]}</span>
+      </li>
+    )
+  }
+  {
+    entry && (
+      <li class="pf-list__item">
+        <Icon name="document" class="pf-list__icon" />
+        <span class="pf-list__label">{t(locale, 'seo.includesTitle')}</span>
+        <span class="pf-list__value">{entry.includes[locale]}</span>
+      </li>
+    )
+  }
+</ul>
+
+<p class="price-note">
+  <span class="price-note__label">{priceFlow.kicker[locale]}</span>
+  {t(locale, 'seo.priceContact')}
+</p>

@@ -1,0 +1,57 @@
+---
+/**
+ * Blok 3 kroków — wybierz profil → cennik i termin → partia ucięta.
+ *
+ * Samowystarczalny: bierze kroki z `src/content/funnel.ts`, nie ma własnych
+ * literali. Kolejność niesie semantyka listy (`<ol>`) — bez numeracji
+ * dekoracyjnej (decisión del cliente: nada de «01 · 02 · 03»).
+ *
+ * Użycie:
+ *   <HowItWorks locale={locale} />
+ */
+import { funnelSteps, howItWorks, type FunnelStep } from '../content/funnel';
+import type { Locale } from '../i18n';
+
+interface Props {
+  locale: Locale;
+  /** Kroki — domyślnie trzy kroki z `funnel.ts`. */
+  steps?: FunnelStep[];
+  /** Nagłówek nad blokiem. Domyślnie „Jak to działa". */
+  title?: string;
+  /** Nadtytuł. Domyślnie „Proces". */
+  kicker?: string;
+  /** Jedno zdanie pod nagłówkiem. */
+  lede?: string;
+  /** Poziom nagłówka kroków: 3 (domyślnie) albo 2, gdy blok stoi sam. */
+  headingLevel?: 2 | 3;
+}
+
+const {
+  locale,
+  steps = funnelSteps,
+  title = howItWorks.title[locale],
+  kicker = howItWorks.kicker[locale],
+  lede = howItWorks.lede[locale],
+  headingLevel = 3,
+} = Astro.props;
+
+const Heading = `h${headingLevel}` as 'h2' | 'h3';
+---
+
+<div class="how-it-works">
+  <div class="how-it-works__head">
+    <p class="kicker">{kicker}</p>
+    <h2 class="how-it-works__title">{title}</h2>
+    <p class="lede">{lede}</p>
+  </div>
+  <ol class="how-it-works__list">
+    {
+      steps.map((step) => (
+        <li class="how-it-works__step">
+          <Heading class="how-it-works__step-title">{step.title[locale]}</Heading>
+          <p class="how-it-works__step-text">{step.text[locale]}</p>
+        </li>
+      ))
+    }
+  </ol>
+</div>

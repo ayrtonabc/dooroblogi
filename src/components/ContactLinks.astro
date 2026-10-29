@@ -1,0 +1,56 @@
+---
+import { company, phoneDisplay, whatsappUrl } from '../content/company';
+import { t } from '../i18n/ui';
+import type { Locale } from '../i18n';
+
+interface Props {
+  locale: Locale;
+  /** Gotowa treść wiadomości WhatsApp (nadpisuje domyślną). */
+  message?: string;
+  /** Pokaż adres e-mail. */
+  showEmail?: boolean;
+  /** Pokaż link do Messengera. */
+  showMessenger?: boolean;
+  class?: string;
+}
+
+const {
+  locale,
+  message,
+  showEmail = true,
+  showMessenger = true,
+  class: className = 'contact-links',
+} = Astro.props;
+
+const waText = message ?? t(locale, 'wa.quote');
+---
+
+<ul class={className}>
+  <li>
+    <a href={`tel:${company.phoneE164}`}>
+      <span class="visually-hidden">{t(locale, 'contact.phone')}</span>
+      {phoneDisplay(locale)}
+    </a>
+  </li>
+  {
+    showMessenger && (
+      <li>
+        <a href={company.messengerUrl} target="_blank" rel="noopener">
+          Messenger
+        </a>
+      </li>
+    )
+  }
+  <li>
+    <a href={whatsappUrl(waText)} target="_blank" rel="noopener">
+      WhatsApp
+    </a>
+  </li>
+  {
+    showEmail && (
+      <li>
+        <a href={`mailto:${company.contactEmail}`}>{company.contactEmail}</a>
+      </li>
+    )
+  }
+</ul>

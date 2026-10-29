@@ -1,0 +1,30 @@
+{
+  "$comment": "Grupy tras w kolejności [pl, en, de]. Używane przez astro.config.mjs do sitemap (xhtml:link) i do kontroli hreflang.",
+  "groups": [
+    ["/", "/en/", "/de/"],
+    ["/produkty/", "/en/products/", "/de/produkte/"],
+    [
+      "/produkty/oblog-debowy-ciety/",
+      "/en/products/oak-trim-battens/",
+      "/de/produkte/eichen-abschlussleiste-auf-mass/"
+    ],
+    [
+      "/produkty/oblog-debowy-wedzony/",
+      "/en/products/smoked-oak-trim/",
+      "/de/produkte/geraeucherte-eichen-abschlussleiste/"
+    ],
+    ["/produkty/lamela-debowa/", "/en/products/oak-battens/", "/de/produkte/eichenlamelle/"],
+    [
+      "/produkty/panele-sufitowe-i-scienne/",
+      "/en/products/oak-ceiling-and-wall-panels/",
+      "/de/produkte/eichen-decken-und-wandpaneele/"
+    ],
+    ["/realizacje/", "/en/gallery/", "/de/galerie/"],
+    ["/o-nas/", "/en/about/", "/de/ueber-uns/"],
+    ["/cennik/", "/en/price-list/", "/de/preisliste/"],
+    ["/kontakt/", "/en/contact/", "/de/kontakt/"],
+    ["/dla-firm/", "/en/for-trade/", "/de/fuer-handwerk/"],
+    ["/dostawa/", "/en/delivery/", "/de/lieferung/"],
+    ["/polityka-prywatnosci/", "/en/privacy-policy/", "/de/datenschutz/"]
+  ]
+}

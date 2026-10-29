@@ -1,0 +1,69 @@
+---
+import { faq } from '../content/pages';
+import { SCHEMA_CONTEXT } from '../content/schema';
+import type { Locale } from '../i18n';
+
+interface Props {
+  locale: Locale;
+  /** Opcjonalny własny zestaw pytań (nadpisuje domyślny). */
+  items?: typeof faq;
+  /** Id sekcji — schema.org FAQPage celuje w nagłówek. */
+  headingId?: string;
+}
+
+const { locale, items = faq, headingId } = Astro.props;
+
+/**
+ * Dwie kolumny tylko dla list, które się w nich dzielą bez reszty:
+ * parzysta liczba pozycji, co najmniej cztery. Lista sześciu pytań
+ * zajmowała w jednej kolumnie ~700 px wysokości i zostawiała połowę
+ * szerokości sekcji pustą; w dwóch kolumnach wypełnia ją w całości.
+ */
+const twoColumns = items.length >= 4 && items.length % 2 === 0;
+
+/**
+ * FAQPage — ten sam zestaw pytań, który widać na stronie. Bez osobnej
+ * listy „dla robotów”: gdy treść w JSON-LD rozjedzie się z tym, co
+ * widać, rich result przestaje być ważny.
+ *
+ * `@id` kotwicy do strony pozwala powiązać węzeł z resztą grafu
+ * wiedzy (organizacja → strona → FAQ).
+ */
+const pageUrl = new URL(Astro.url.pathname, Astro.site ?? 'https://doors-oblogi.pl').href;
+
+const faqLd = {
+  /** Bloque suelto fuera del `@graph`: lleva su propio contexto. */
+  '@context': SCHEMA_CONTEXT,
+  '@type': 'FAQPage',
+  '@id': `${pageUrl}#faq`,
+  url: pageUrl,
+  inLanguage: locale === 'pl' ? 'pl-PL' : locale,
+  mainEntity: items.map((item, index) => ({
+    '@type': 'Question',
+    '@id': `${pageUrl}#question-${index + 1}`,
+    name: item.question[locale],
+    acceptedAnswer: {
+      '@type': 'Answer',
+      text: item.answer[locale],
+    },
+  })),
+};
+---
+
+<script type="application/ld+json" set:html={JSON.stringify(faqLd)} is:inline />
+
+<div class:list={['faq', twoColumns && 'faq--2']}>
+  {
+    items.map((item) => (
+      <details class="faq__item">
+        <summary class="faq__question">
+          <span>{item.question[locale]}</span>
+          <span class="faq__icon" aria-hidden="true" />
+        </summary>
+        <div class="faq__answer">
+          <p>{item.answer[locale]}</p>
+        </div>
+      </details>
+    ))
+  }
+</div>

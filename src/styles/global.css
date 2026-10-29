@@ -1,0 +1,5217 @@
+/* =====================================================================
+   Doors Obłogi — system wizualny
+   ---------------------------------------------------------------------
+   Paleta i typografia wyprowadzone z realnych zdjęć drewna klienta:
+   ciepłe brązy twardego dębu, popiel wędzonego drewna, krem papieru.
+   Bez cieni, bez zaokrągleń typu "app". Włoski border, duży kontrast
+   typograficzny, dużo powietrza.
+   ===================================================================== */
+
+/* ---------- 0. Awaryjne kroje pisma ---------- */
+/* Zastępnik z metrykami dopasowanymi do krojów webowych — mniejszy CLS
+   przy podmianie fontu (font-display: swap) i przy braku sieci. */
+@font-face {
+  font-family: 'Fraunces Fallback';
+  src: local('Georgia'), local('Times New Roman'), local('serif');
+  size-adjust: 97%;
+  ascent-override: 94%;
+  descent-override: 24%;
+  line-gap-override: 0%;
+}
+
+@font-face {
+  font-family: 'Archivo Fallback';
+  src: local('Segoe UI'), local('Helvetica Neue'), local('Arial'), local('sans-serif');
+  size-adjust: 101%;
+  ascent-override: 96%;
+  descent-override: 24%;
+  line-gap-override: 0%;
+}
+
+/* ---------- 1. Tokeny ---------- */
+
+:root {
+  /* Kolory */
+  --ink: #1b1611;
+  --ink-2: #2b231b;
+  --bark: #46372a;
+  --clay: #75604a;
+  --oak: #9d7a4f;
+  --straw: #d6c3a4;
+  --sand: #e7dcc8;
+  --cream: #f5f0e6;
+  --paper: #fbf8f2;
+
+  --text: var(--ink);
+  --text-soft: #6a5d50;
+  --text-invert: var(--cream);
+  --text-invert-soft: #c4b7a4;
+
+  --line: color-mix(in srgb, var(--ink) 14%, transparent);
+  --line-strong: color-mix(in srgb, var(--ink) 30%, transparent);
+  --line-invert: color-mix(in srgb, var(--cream) 22%, transparent);
+
+  --accent: var(--oak);
+  /* Duración de una vuelta completa de la deriva del hero: dos anchuras de
+     pantalla en 150 s ≈ 19 px/s a 1440 px. Lento a propósito: tiene que
+     leerse como una foto viva, no como un rótulo en movimiento. */
+  --hero-drift: 150s;
+  /* Przyciemniony o jeden stopień względem #7d5c34: na piaskowym tle
+     (.section--sand) stary kolor dawał 4,48:1, czyli minimalny próg AA
+     4,5:1 nie był dotrzymany. Ten sam odcień, tylko ciemniejszy — wszystkie
+     pozostałe pary tylko zyskują na kontraście (papier 6,00:1, krem 5,60:1). */
+  --accent-strong: #7a5932;
+
+  /* Tipografía
+     Fraunces: serif de imprenta con eje óptico (opsz). A tamaño de titular
+     afina las finas y gana contraste; a tamaño medio no se rompe.
+     Archivo: grotesco de formas cuadradas para texto y versalitas. */
+  --font-display: 'Fraunces Variable', 'Fraunces', 'Fraunces Fallback', Georgia, 'Times New Roman',
+    serif;
+  --font-sans: 'Archivo Variable', 'Archivo', 'Archivo Fallback', system-ui, -apple-system,
+    'Segoe UI', sans-serif;
+
+  --step--1: clamp(0.82rem, 0.79rem + 0.15vw, 0.9rem);
+  --step-0: clamp(1rem, 0.96rem + 0.2vw, 1.125rem);
+  --step-1: clamp(1.18rem, 1.09rem + 0.45vw, 1.45rem);
+  --step-2: clamp(1.4rem, 1.2rem + 0.95vw, 2rem);
+  /* h2 (--step-3) i h1 (--step-4): wcześniej dzielił je tylko 1,46× —
+     w kolumnie 589 px tytuł sekcji łamał się na dwa wiersze i dominował
+     nad treścią. Teraz h1/h2 = 1,71× (1280 px), y h2 baja a 38,4 px. */
+  --step-3: clamp(1.6rem, 1.28rem + 1.4vw, 2.5rem);
+  --step-4: clamp(2.35rem, 1.62rem + 3.1vw, 4.25rem);
+  --step-5: clamp(2.6rem, 1.5rem + 5.2vw, 5.5rem);
+
+  /* Rytm */
+  --gap: clamp(1rem, 0.7rem + 1.5vw, 1.75rem);
+  --section-y: clamp(3.5rem, 2rem + 6vw, 7rem);
+  --container: 1240px;
+  --container-narrow: 760px;
+
+  --radius: 3px;
+  --radius-lg: 5px;
+}
+
+/* ---------- 2. Reset ---------- */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+* {
+  margin: 0;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  scroll-behavior: smooth;
+  scroll-padding-top: 6rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+body {
+  font-family: var(--font-sans);
+  font-size: var(--step-0);
+  line-height: 1.68;
+  color: var(--text);
+  background: var(--paper);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overflow-x: hidden;
+}
+
+img,
+picture,
+svg,
+video {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+input,
+button,
+textarea,
+select {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+/* ---------- 3. Typografia ---------- */
+
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--font-display);
+  font-weight: 400;
+  line-height: 1.08;
+  letter-spacing: -0.015em;
+  text-wrap: balance;
+}
+
+h1 {
+  font-size: var(--step-4);
+}
+h2 {
+  font-size: var(--step-3);
+}
+h3 {
+  font-size: var(--step-2);
+}
+h4 {
+  font-size: var(--step-1);
+}
+
+p {
+  text-wrap: pretty;
+}
+
+a {
+  color: inherit;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.2em;
+}
+
+a:hover {
+  text-decoration-color: currentColor;
+}
+
+strong {
+  font-weight: 600;
+}
+
+::selection {
+  /* Tło musi dawać 4,5:1 z kolorem tekstu — na --oak było 3,72:1. */
+  background: var(--accent-strong);
+  color: var(--paper);
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent-strong);
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+
+.section--dark :focus-visible {
+  outline-color: var(--straw);
+}
+
+/* ---------- 4. Layout ---------- */
+
+.container {
+  width: min(var(--container), 100% - clamp(1.25rem, 4vw, 3.5rem));
+  margin-inline: auto;
+}
+
+.container--narrow {
+  width: min(var(--container-narrow), 100% - clamp(1.25rem, 4vw, 3.5rem));
+  margin-inline: auto;
+}
+
+.section {
+  padding-block: var(--section-y);
+  position: relative;
+}
+
+.section--tight {
+  padding-block: clamp(2.5rem, 1.5rem + 4vw, 4.5rem);
+}
+
+.section--paper {
+  background: var(--paper);
+}
+
+.section--cream {
+  background: var(--cream);
+}
+
+.section--sand {
+  background: var(--sand);
+}
+
+.section--dark {
+  background: var(--ink);
+  color: var(--text-invert);
+}
+
+.section--dark h1,
+.section--dark h2,
+.section--dark h3 {
+  color: var(--cream);
+}
+
+.section--dark .kicker {
+  color: var(--straw);
+}
+
+.section--dark .lede,
+.section--dark .prose p {
+  color: var(--text-invert-soft);
+}
+
+.section + .section {
+  border-top: 1px solid var(--line);
+}
+
+.section--dark + .section:not(.section--dark) {
+  border-top-color: transparent;
+}
+
+.section-head {
+  display: grid;
+  gap: var(--gap);
+  margin-bottom: clamp(2rem, 1.2rem + 2.5vw, 3.5rem);
+  max-width: 62ch;
+}
+
+.section-head--split {
+  max-width: none;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+@media (min-width: 62rem) {
+  .section-head--split {
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+    align-items: end;
+    gap: clamp(2rem, 5vw, 5rem);
+  }
+}
+
+.kicker {
+  font-family: var(--font-sans);
+  font-size: var(--step--1);
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--accent-strong);
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+}
+
+.kicker::before {
+  content: '';
+  width: 1.75rem;
+  height: 1px;
+  background: currentColor;
+  opacity: 0.6;
+  flex: none;
+}
+
+.lede {
+  font-size: var(--step-1);
+  line-height: 1.55;
+  color: var(--text-soft);
+  font-family: var(--font-display);
+  font-weight: 300;
+}
+
+.section--dark .lede {
+  color: var(--text-invert-soft);
+}
+
+.prose > * + * {
+  margin-top: 1.1em;
+}
+
+.prose p {
+  color: var(--text-soft);
+  max-width: 68ch;
+}
+
+.prose h2,
+.prose h3 {
+  margin-top: 2.2em;
+}
+
+.prose ul {
+  padding-left: 1.15rem;
+  color: var(--text-soft);
+}
+
+.prose li + li {
+  margin-top: 0.5em;
+}
+
+.visually-hidden {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.skip-link {
+  position: absolute;
+  left: 1rem;
+  top: -100px;
+  z-index: 999;
+  background: var(--ink);
+  color: var(--cream);
+  padding: 0.75rem 1.15rem;
+  border-radius: var(--radius);
+  transition: top 0.15s ease;
+}
+
+.skip-link:focus {
+  top: 1rem;
+}
+
+/* ---------- 5. Przyciski ---------- */
+
+.btn {
+  --btn-bg: var(--ink);
+  --btn-fg: var(--cream);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  padding: 0.9rem 1.5rem;
+  background: var(--btn-bg);
+  color: var(--btn-fg);
+  border: 1px solid var(--btn-bg);
+  border-radius: var(--radius);
+  font-size: var(--step--1);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  text-decoration: none;
+  transition:
+    background-color 0.18s ease,
+    color 0.18s ease,
+    border-color 0.18s ease;
+}
+
+.btn:hover {
+  --btn-bg: var(--accent-strong);
+  --btn-fg: var(--paper);
+  text-decoration: none;
+}
+
+.btn--ghost {
+  --btn-bg: transparent;
+  --btn-fg: var(--text);
+  border-color: var(--line-strong);
+}
+
+.btn--ghost:hover {
+  --btn-bg: var(--ink);
+  --btn-fg: var(--cream);
+}
+
+.section--dark .btn--ghost {
+  --btn-fg: var(--cream);
+  border-color: var(--line-invert);
+}
+
+.section--dark .btn--ghost:hover {
+  --btn-bg: var(--cream);
+  --btn-fg: var(--ink);
+}
+
+.btn--light {
+  --btn-bg: var(--cream);
+  --btn-fg: var(--ink);
+}
+
+.btn--light:hover {
+  --btn-bg: var(--paper);
+  --btn-fg: var(--ink);
+}
+
+.btn-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.85rem;
+}
+
+/* Link z podkreśleniem animowanym */
+.link-arrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+  font-size: var(--step--1);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  text-decoration: none;
+  border-bottom: 1px solid currentColor;
+  padding-bottom: 2px;
+}
+
+.link-arrow::after {
+  content: '→';
+  transition: transform 0.18s ease;
+}
+
+.link-arrow:hover::after {
+  transform: translateX(4px);
+}
+
+/* ---------- 6. Nagłówek ---------- */
+
+.site-header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: color-mix(in srgb, var(--paper) 88%, transparent);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--line);
+}
+
+.site-header__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: clamp(0.75rem, 0.6rem + 1vw, 1.25rem);
+  min-height: 4.5rem;
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.7rem;
+  text-decoration: none;
+  flex: none;
+}
+
+.brand__mark {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid var(--line-strong);
+  flex: none;
+}
+
+.brand__name {
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  line-height: 1;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+
+.brand__tag {
+  display: block;
+  font-family: var(--font-sans);
+  font-size: 0.62rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--text-soft);
+  margin-top: 0.25rem;
+}
+
+.nav {
+  display: none;
+  align-items: center;
+}
+
+.nav__list {
+  display: flex;
+  align-items: center;
+  gap: clamp(0.85rem, 1.3vw, 1.4rem);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.nav__item {
+  position: relative;
+}
+
+.nav__link {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
+  font-size: var(--step--1);
+  font-weight: 500;
+  text-decoration: none;
+  color: var(--text-soft);
+  padding-block: 0.45rem;
+  white-space: nowrap;
+  transition: color 0.15s ease;
+}
+
+/*
+ * Podkreślenie narysowane pseudoelementem, nie borderem: border zmienia
+ * wysokość pozycji, a przy `align-items: center` cały pasek skacze o
+ * piksel przy każdej zmianie strony.
+ */
+.nav__link::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  background: var(--accent);
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 0.18s ease;
+}
+
+.nav__link:hover {
+  color: var(--text);
+}
+
+.nav__link:hover::after {
+  transform: scaleX(1);
+}
+
+.nav__link[aria-current='page'] {
+  color: var(--text);
+}
+
+.nav__link[aria-current='page']::after {
+  transform: scaleX(1);
+}
+
+.nav__chevron {
+  width: 0.8rem;
+  height: 0.8rem;
+  opacity: 0.55;
+  transition: transform 0.18s ease;
+}
+
+.nav__item--menu:hover .nav__chevron,
+.nav__item--menu:focus-within .nav__chevron {
+  transform: rotate(180deg);
+}
+
+/* ---------- Panel produktów (bez JavaScriptu) ---------- */
+
+/*
+ * Panel otwiera się na `:hover` i `:focus-within` — czyli sam najechanie
+ * ALBO wejście klawiszem. Bez skryptu, bez martwego przycisku: „Produkty"
+ * zostaje zwykłym linkiem do katalogu, a lista produktów to bonus.
+ */
+.nav__panel {
+  position: absolute;
+  top: calc(100% + 0.55rem);
+  left: -0.9rem;
+  z-index: 20;
+  min-width: 16.5rem;
+  padding: 0.5rem;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: 0 22px 44px -28px color-mix(in srgb, var(--ink) 55%, transparent);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-4px);
+  transition:
+    opacity 0.16s ease,
+    transform 0.16s ease,
+    visibility 0s linear 0.16s;
+}
+
+.nav__item--menu:hover .nav__panel,
+.nav__item--menu:focus-within .nav__panel {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+  transition:
+    opacity 0.16s ease,
+    transform 0.16s ease,
+    visibility 0s;
+}
+
+/* Most nad przerwą między linkiem a panelem — bez niego mysz zsuwałaby
+   się w szczelinę i panel zamykał się, zanim do niego doszła. */
+.nav__panel::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -0.55rem;
+  height: 0.55rem;
+}
+
+.nav__panel-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.nav__panel-link {
+  display: block;
+  padding: 0.55rem 0.7rem;
+  border-radius: 2px;
+  font-family: var(--font-display);
+  font-size: var(--step-0);
+  line-height: 1.25;
+  color: var(--text);
+  text-decoration: none;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.nav__panel-link:hover {
+  background: color-mix(in srgb, var(--ink) 5%, transparent);
+}
+
+.nav__panel-link[aria-current='page'] {
+  color: var(--accent-strong);
+}
+
+.nav__panel-all {
+  display: block;
+  margin-top: 0.35rem;
+  padding: 0.65rem 0.7rem 0.2rem;
+  border-top: 1px solid var(--line);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--text-soft);
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+
+.nav__panel-all:hover {
+  color: var(--accent-strong);
+}
+
+/* Języki — flagi widoczne */
+.lang {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+  padding: 0.15rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--cream) 60%, transparent);
+}
+
+.lang__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.32rem 0.4rem;
+  border-radius: 2px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-decoration: none;
+  color: var(--text-soft);
+  line-height: 1;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.lang__item:hover {
+  color: var(--text);
+  background: color-mix(in srgb, var(--ink) 6%, transparent);
+}
+
+.lang__item[aria-current='true'] {
+  background: var(--ink);
+  color: var(--cream);
+}
+
+.lang__flag {
+  display: block;
+  width: 20px;
+  height: 13px;
+  flex: none;
+  border-radius: 1.5px;
+  overflow: hidden;
+  /* Cienka obwódka, żeby flaga nie ginęła na jasnym tle */
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--ink) 22%, transparent);
+}
+
+.lang__code {
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+}
+
+/* Telefon i pasku nie mieściły się w 390 px: logo (148 px) + trzy
+   języki z kodami (172 px) + przycisk „Menu" (88 px) dawały 442 px przy
+   dostępnych 370 px. Przycisk wychodził 52 px poza ekran, a `overflow-x:
+   hidden` go ucinał. Poniżej 36rem zostają same flagi (nazwa języka jest
+   w `title` i w tekście dla czytników ekranu), a pasek jest ciaśniejszy.
+   Zmierzone po zmianie: 360 px → 336 px treści przy 340 px miejsca. */
+@media (max-width: 35.99rem) {
+  .site-header .lang__code {
+    display: none;
+  }
+
+  .site-header__bar {
+    gap: 0.6rem;
+  }
+
+  .header__actions {
+    gap: 0.5rem;
+  }
+
+  .site-header .lang__item {
+    padding: 0.28rem 0.3rem;
+  }
+
+  .nav-toggle {
+    padding: 0.5rem 0.7rem;
+  }
+}
+
+.header__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.header__cta {
+  display: none;
+  white-space: nowrap;
+}
+
+/* Teléfono en el pase de cabecera — visible desde tablet.
+   El enlace de WhatsApp que iba al lado se ha retirado: ensuciaba la barra
+   y ya está en la barra flotante de móvil, en el menú y en el CTA final. */
+.header__phone {
+  display: none;
+  font-size: var(--step--1);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  color: var(--text);
+}
+
+@media (min-width: 48rem) {
+  .header__phone {
+    display: inline-flex;
+  }
+}
+
+/* Lista kontaktów (telefon, Messenger, WhatsApp, e-mail). */
+.contact-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 1.1rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: var(--step--1);
+}
+
+.contact-links a {
+  color: inherit;
+  text-decoration: none;
+  border-bottom: 1px solid var(--line-strong);
+  padding-bottom: 1px;
+}
+
+.contact-links a:hover {
+  color: var(--accent-strong);
+  border-color: currentColor;
+}
+
+.footer__contact .contact-links a {
+  color: inherit;
+}
+
+.nav-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: transparent;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  padding: 0.55rem 0.8rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.nav-toggle__bars {
+  display: grid;
+  gap: 3px;
+  width: 1rem;
+}
+
+.nav-toggle__bars span {
+  display: block;
+  height: 1.5px;
+  background: currentColor;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+/* Pełna nawigacja pojawia się dopiero tam, gdzie na pewno się mieści
+   w jednej linii — logo + 5 pozycji + flagi + telefon + przycisk. */
+@media (min-width: 78rem) {
+  .nav {
+    display: flex;
+  }
+  .nav-toggle {
+    display: none;
+  }
+  .header__cta {
+    display: inline-flex;
+  }
+}
+
+/* Menu mobilne */
+.mobile-nav {
+  display: none;
+  border-top: 1px solid var(--line);
+  background: var(--paper);
+  padding-block: 1rem 1.5rem;
+  /*
+   * La cabecera es `sticky`: si el panel es más alto que la pantalla, su
+   * parte baja (el CTA) queda fuera de alcance — la página se desplaza
+   * DETRÁS de la cabecera, no dentro de ella. Por eso el panel tiene su
+   * propio scroll y se queda siempre a la vista el botón de cotización.
+   */
+  max-height: calc(100vh - 4.5rem);
+  max-height: calc(100dvh - 4.5rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.mobile-nav[data-open='true'] {
+  display: block;
+}
+
+.mobile-nav__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Separatora między sekcjami menu, nie pod linkiem: „Produkty" ma pod
+   sobą listę produktów i kreska musi być POD całym blokiem. */
+.mobile-nav__list > li {
+  border-bottom: 1px solid var(--line);
+}
+
+.mobile-nav__link {
+  display: block;
+  padding: 0.7rem 0;
+  text-decoration: none;
+  font-size: var(--step-1);
+  font-family: var(--font-display);
+}
+
+.mobile-nav__link[aria-current='page'] {
+  color: var(--accent-strong);
+}
+
+/* Productos bajo «Productos» — en el móvil no hay hover, así que el acceso
+   a la ficha de producto tiene que estar en el menú. */
+.mobile-nav__sub {
+  margin: 0 0 0.6rem;
+  padding: 0 0 0 0.85rem;
+  list-style: none;
+  border-left: 1px solid var(--line);
+}
+
+.mobile-nav__sub-link {
+  display: block;
+  padding: 0.35rem 0;
+  font-size: var(--step-0);
+  color: var(--text-soft);
+  text-decoration: none;
+}
+
+.mobile-nav__sub-link[aria-current='page'] {
+  color: var(--accent-strong);
+}
+
+/* Idiomas — con nombre, porque en la barra solo hay banderas. */
+.mobile-nav__lang {
+  margin-top: 1.1rem;
+}
+
+.mobile-nav__lang-label {
+  display: block;
+  margin-bottom: 0.6rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--text-soft);
+}
+
+.lang--list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border: 0;
+  background: none;
+}
+
+.lang--list .lang__item {
+  padding: 0.45rem 0.7rem;
+  border: 1px solid var(--line);
+  font-size: 0.82rem;
+  letter-spacing: 0;
+}
+
+.lang--list .lang__code {
+  display: none;
+}
+
+.lang__name {
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.mobile-nav__cta {
+  margin-top: 1.5rem;
+  display: grid;
+  gap: 0.75rem;
+}
+
+/* ---------- 7. Hero ---------- */
+
+.hero {
+  position: relative;
+  isolation: isolate;
+  background: var(--ink);
+  color: var(--text-invert);
+  overflow: hidden;
+}
+
+.hero__media {
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  overflow: hidden;
+}
+
+/*
+ * Deriva infinita del hero — la foto viaja de derecha a izquierda, sin fin.
+ *
+ * La pista lleva TRES copias: la foto, su ESPEJO y la foto otra vez. El
+ * recorrido es de dos anchuras de pantalla (`-66.6667%` de la pista, que mide
+ * tres), así que al reiniciar el bucle la tercera copia ocupa exactamente el
+ * sitio de la primera: la imagen no tiene ni principio ni final.
+ *
+ * ¿Por qué el espejo? Porque el borde derecho de una copia es el borde
+ * izquierdo de la otra: el empalme cae en un EJE DE SIMETRÍA, que en una
+ * macro de veta se lee como madera, y no en un corte de foto, que se lee como
+ * un error. Con tres copias el reflejo ocupa el segundo tercio del recorrido
+ * y el bucle sigue cerrando sobre la foto original.
+ *
+ * La copia mide un tercio de la pista — el ancho de la pantalla — para que la
+ * ventana nunca quede al descubierto mientras la foto se mueve.
+ *
+ * Solo `transform`: va en el compositor, no toca el layout ni provoca
+ * repintados. La duración sale de `--hero-drift` (token en `:root`).
+ */
+.hero__track {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 300%;
+  height: 100%;
+  display: flex;
+  will-change: transform;
+}
+
+.hero__copy {
+  position: relative;
+  flex: 0 0 33.3333%;
+  height: 100%;
+  /* Recorta la "respiración" del zoom: si no, la foto desbordaría sobre la
+     copia vecina y el empalme se vería. */
+  overflow: hidden;
+  /* Aísla el mezclado de la luz de la veta: cada copia se mezcla con SU
+     foto, no con el fondo de la pista. */
+  isolation: isolate;
+}
+
+/* La copia del medio va espejada: su borde izquierdo es el derecho de la
+   original, y ahí el empalme se convierte en un eje de simetría. */
+.hero__copy--mirror {
+  transform: scaleX(-1);
+}
+
+@keyframes hero-drift {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(-66.6667%, 0, 0);
+  }
+}
+
+.hero__media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 45%;
+  display: block;
+}
+
+/* — Luz recorriendo la veta del hero —
+ *
+ * La máscara (public/images/grain-hero.webp) sale de la propia foto: es un
+ * Sobel de las vetas generado con `_tools/make-grain-mask.cjs`. El degradado
+ * de luz solo se ve sobre las líneas del grano, así que el brillo «camina»
+ * por la madera en vez de ser un barrido genérico encima de la imagen.
+ *
+ * Dos capas y no una: la máscara queda fija (no se repinta) y lo que se
+ * mueve es la banda de luz con `transform`, que va en el compositor. Animar
+ * `background-position` sobre una máscara a pantalla completa costaba
+ * repintados de toda la superficie.
+ */
+.hero__grain {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  -webkit-mask-image: url('/images/grain-hero.webp');
+  mask-image: url('/images/grain-hero.webp');
+  -webkit-mask-size: cover;
+  mask-size: cover;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-mode: luminance;
+  mask-mode: luminance;
+  /* `plus-lighter` suma luz: sobre la madera se lee como un brillo que pasa,
+     no como una capa blanca encima. Con `soft-light` casi no se veía. */
+  mix-blend-mode: plus-lighter;
+  opacity: 0.8;
+}
+
+.hero__grain-band {
+  position: absolute;
+  left: -55%;
+  top: -55%;
+  width: 210%;
+  height: 210%;
+  background: linear-gradient(
+    104deg,
+    transparent 26%,
+    rgba(255, 243, 220, 0.22) 42%,
+    rgba(255, 247, 232, 0.9) 50%,
+    rgba(255, 243, 220, 0.22) 58%,
+    transparent 74%
+  );
+  will-change: transform;
+}
+
+.hero::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  /* Mocniejszy lewy gradient: tekst musi się odcinać od jasnego blacha dębu. */
+  background:
+    linear-gradient(
+      100deg,
+      color-mix(in srgb, var(--ink) 96%, transparent) 0%,
+      color-mix(in srgb, var(--ink) 88%, transparent) 38%,
+      color-mix(in srgb, var(--ink) 58%, transparent) 66%,
+      color-mix(in srgb, var(--ink) 22%, transparent) 100%
+    ),
+    linear-gradient(to top, color-mix(in srgb, var(--ink) 88%, transparent), transparent 58%);
+}
+
+.hero__inner {
+  display: grid;
+  gap: clamp(1.75rem, 4vw, 3rem);
+  padding-block: clamp(4rem, 8vw, 8rem);
+  max-width: 46rem;
+}
+
+.hero .kicker {
+  color: var(--straw);
+}
+
+.hero__title {
+  font-size: var(--step-5);
+  color: var(--paper);
+  letter-spacing: -0.025em;
+}
+
+.hero__lead {
+  font-family: var(--font-display);
+  font-weight: 300;
+  font-size: var(--step-1);
+  line-height: 1.5;
+  color: #e4dac9;
+  max-width: 40ch;
+}
+
+.hero .btn {
+  --btn-bg: var(--cream);
+  --btn-fg: var(--ink);
+}
+
+.hero .btn:hover {
+  --btn-bg: var(--paper);
+}
+
+.hero .btn--ghost {
+  --btn-bg: transparent;
+  --btn-fg: var(--cream);
+  border-color: var(--line-invert);
+}
+
+.hero .btn--ghost:hover {
+  --btn-bg: var(--cream);
+  --btn-fg: var(--ink);
+}
+
+.hero__facts {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.8rem 1.75rem;
+  padding-top: clamp(1.25rem, 3vw, 2rem);
+  border-top: 1px solid var(--line-invert);
+  margin-top: 0.5rem;
+}
+
+.hero__fact {
+  font-size: var(--step--1);
+  color: #d9cdb9;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+/* Ikony faktów w hero — SVG inline, rysunek w kolorze słomki. */
+.hero__fact .icon {
+  width: 1.3rem;
+  height: 1.3rem;
+  flex: none;
+  color: var(--straw);
+}
+
+/* Wiersz faktów mieści się w kolumnie hero (46 rem), więc cztery pozycje
+   idą w dwóch kolumnach — inaczej każda łamie tekst na dwa wiersze. */
+@media (min-width: 34rem) {
+  .hero__facts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* ---------- 8. Karty produktów ---------- */
+
+.grid-products {
+  display: grid;
+  gap: clamp(1.5rem, 3vw, 2.5rem);
+}
+
+@media (min-width: 48rem) {
+  .grid-products {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* Como en la referencia: cuatro baldosas en fila en escritorio, con la foto
+   en vertical y el texto debajo. En móvil siguen siendo dos columnas. */
+@media (min-width: 64rem) {
+  .grid-products {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: clamp(1rem, 2vw, 1.5rem);
+  }
+}
+
+.grid-products .card__media {
+  aspect-ratio: 4 / 5;
+}
+
+/* Trzy karty zamiast czterech („Pozostałe produkty"). W siatce 4-kolumnowej
+   trzecia karta zostawiała całą czwartą kolumnę pustą. */
+@media (min-width: 64rem) {
+  .grid-products--3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  border-radius: var(--radius);
+  overflow: hidden;
+  transition: border-color 0.2s ease, transform 0.2s ease;
+}
+
+.card:hover {
+  border-color: var(--line-strong);
+}
+
+.card__media {
+  position: relative;
+  aspect-ratio: 4 / 5;
+  overflow: hidden;
+  background: var(--sand);
+}
+
+.card__media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.5s cubic-bezier(0.2, 0.6, 0.2, 1);
+}
+
+.card:hover .card__media img {
+  transform: scale(1.04);
+}
+
+.card__body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 1.25rem 1.25rem 1.5rem;
+  flex: 1;
+}
+
+.card__title {
+  font-size: var(--step-1);
+}
+
+.card__text {
+  font-size: var(--step--1);
+  color: var(--text-soft);
+  line-height: 1.6;
+}
+
+.card__footer {
+  margin-top: auto;
+  padding-top: 0.75rem;
+}
+
+/* ---------- 9. Układ dwukolumnowy ---------- */
+
+.split {
+  display: grid;
+  gap: clamp(1.75rem, 4vw, 4rem);
+  align-items: start;
+}
+
+@media (min-width: 60rem) {
+  .split {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .split--media-first > :first-child {
+    order: -1;
+  }
+}
+
+/* Kolumna tekstu obok wysokiej karty formularza: centrowanie w pionie
+   zamiast doczepiania u góry zostawiało pod spodem pustkę wysoką
+   na kartę (~900 px). */
+@media (min-width: 60rem) {
+  .split--center {
+    align-items: center;
+  }
+}
+
+/* Kolumna lewa przykleja się podczas przewijania, gdy prawa jest DUŻO
+   dłuższa (definicja + tabela specs, cennik + warunki). Bez tego tytuł
+   zostawał na górze, a pod nim ~600–850 px pustki po lewej stronie —
+   największa dziura wizualna na stronie produktu i na stronie głównej.
+   Stosować tylko wtedy, gdy lewa kolumna jest krótsza od okna: przyklejony
+   blok wyższy od viewportu zostawiłby dół nieosiągalny. */
+@media (min-width: 60rem) {
+  .split--sticky > :first-child {
+    position: sticky;
+    top: 6.5rem; /* 4.5rem nagłówka + 2rem oddechu */
+    align-self: start;
+  }
+}
+
+.figure {
+  position: relative;
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--sand);
+}
+
+.figure img {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.figure--tall {
+  aspect-ratio: 3 / 4;
+}
+
+.figure--tall img {
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Cuadrado: para las fotos que acompañan a un texto de altura media (home).
+   Con 3/4 la foto medía 790 px y dejaba 300 px de vacío al lado del texto. */
+.figure--square {
+  aspect-ratio: 1 / 1;
+}
+
+.figure--square img {
+  height: 100%;
+  object-fit: cover;
+}
+
+.figure__caption {
+  font-size: var(--step--1);
+  color: var(--text-soft);
+  margin-top: 0.85rem;
+  padding-left: 0.9rem;
+  border-left: 2px solid var(--accent);
+}
+
+/*
+  Sobre una superficie oscura el tono suave de texto se apaga: #6a5d50 sobre
+  #1b1611 da 2,42:1 y no llega a AA. En oscuro va el tono invertido suave
+  (9,11:1), como el resto de textos de `.section--dark`.
+*/
+.section--dark .figure__caption {
+  color: var(--text-invert-soft);
+}
+
+/* ---------- 10. Dane techniczne ---------- */
+
+.specs {
+  display: grid;
+  gap: 0;
+  border-top: 1px solid var(--line);
+}
+
+.specs__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.2rem;
+  padding-block: 0.95rem;
+  border-bottom: 1px solid var(--line);
+}
+
+@media (min-width: 34rem) {
+  .specs__row {
+    grid-template-columns: minmax(9rem, 0.7fr) minmax(0, 1.3fr);
+    gap: 1.5rem;
+  }
+}
+
+.specs__label {
+  font-size: var(--step--1);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-soft);
+  font-weight: 600;
+}
+
+/*
+ * El valor va en el cuerpo, no en la serif del titular: una tabla de datos
+ * leída como una tabla, no como un anuncio. Es el mismo tratamiento que
+ * llevan los bloques de la ficha de producto (28/10).
+ */
+.specs__value {
+  font-family: var(--font-sans);
+  font-size: var(--step-0);
+  font-weight: 500;
+  line-height: 1.5;
+}
+
+/* Dopisek: „potwierdzamy w wycenie" — wartość jeszcze niepotwierdzona. */
+.specs__note {
+  display: block;
+  font-family: var(--font-sans);
+  font-size: var(--step--1);
+  color: var(--text-soft);
+}
+
+/* ---------- 10.1 Ficha de producto: los datos, en tres franjas ---------- */
+/*
+ * Antes era una rejilla 2×2 (qué recibes · por qué te eligen · cuánto cuesta
+ * · qué confirmamos) con dos tablas metidas dentro: cuatro bloques densos en
+ * paralelo, imposibles de escanear. Ahora son tres franjas con la misma
+ * anatomía que el bloque SEDO de la home: rótulo, titular, entradilla, los
+ * datos uno a uno con icono, el cierre y la salida.
+ */
+
+.pf-band__head {
+  max-width: 62ch;
+  margin-bottom: clamp(2rem, 1.2rem + 2.5vw, 3.25rem);
+}
+
+.pf-band__title {
+  font-size: var(--step-3);
+  line-height: 1.06;
+  margin: 0.55rem 0 1.1rem;
+}
+
+.pf-band__lead {
+  font-size: var(--step-0);
+  line-height: 1.62;
+  color: var(--text);
+  max-width: 52ch;
+  margin: 0;
+}
+
+/* — 01 · Los datos del material: un punto por dato de la ficha — */
+.pf-specs {
+  display: grid;
+  gap: 1.6rem 1.9rem;
+  margin: 0;
+  padding: 0;
+}
+
+@media (min-width: 46rem) {
+  .pf-specs {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  /* El filete va ENTRE columnas, como en el bloque SEDO: la primera de cada
+   * fila arranca en el margen y sólo se separan las que siguen. */
+  .pf-specs__item {
+    padding-left: 1.15rem;
+    border-left: 1px solid var(--line);
+  }
+
+  .pf-specs__item:nth-child(3n + 1) {
+    padding-left: 0;
+    border-left: 0;
+  }
+}
+
+.pf-specs__icon {
+  width: 1.6rem;
+  height: 1.6rem;
+  color: var(--accent-strong);
+  margin-bottom: 0.65rem;
+}
+
+.pf-specs__label {
+  font-family: var(--font-sans);
+  font-size: var(--step--1);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-soft);
+  margin: 0 0 0.35rem;
+}
+
+/* El valor va en el cuerpo, no en la serif del titular (regla 15): una ficha
+ * de datos leída como una ficha, no como un anuncio. */
+.pf-specs__value {
+  font-family: var(--font-sans);
+  font-size: var(--step-0);
+  font-weight: 500;
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* — 02 · Los tres motivos, en fila — */
+.pf-why {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 1.6rem 1.9rem;
+}
+
+@media (min-width: 46rem) {
+  .pf-why {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .pf-why__item {
+    padding-left: 1.15rem;
+    border-left: 1px solid var(--line);
+  }
+
+  .pf-why__item:first-child {
+    padding-left: 0;
+    border-left: 0;
+  }
+}
+
+.pf-why__icon {
+  width: 1.7rem;
+  height: 1.7rem;
+  color: var(--accent-strong);
+  margin-bottom: 0.7rem;
+}
+
+.pf-why__title {
+  font-family: var(--font-display);
+  font-size: var(--step-0);
+  font-weight: 600;
+  line-height: 1.3;
+  margin: 0 0 0.4rem;
+}
+
+.pf-why__text {
+  font-size: var(--step--1);
+  line-height: 1.58;
+  color: var(--text-soft);
+  margin: 0;
+  max-width: 42ch;
+}
+
+/* — 03 · Precio y pedido, a dos columnas — */
+.pf-cols {
+  display: grid;
+  gap: clamp(2.5rem, 4vw, 3.5rem);
+}
+
+@media (min-width: 56rem) {
+  .pf-cols {
+    grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+    column-gap: clamp(3rem, 6vw, 5rem);
+  }
+}
+
+.pf-col__title {
+  font-size: var(--step-1);
+  line-height: 1.25;
+  margin: 0.55rem 0 1.5rem;
+}
+
+/* Puntos con icono: unidad de venta, factores y lo que confirmamos. */
+.pf-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--line);
+}
+
+.pf-list__item {
+  display: grid;
+  grid-template-columns: 1.9rem minmax(0, 1fr);
+  gap: 0.15rem 0.85rem;
+  padding-block: 1rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.pf-list__icon {
+  grid-column: 1;
+  grid-row: 1 / span 2;
+  width: 1.5rem;
+  height: 1.5rem;
+  color: var(--accent-strong);
+  margin-top: 0.2rem;
+}
+
+.pf-list__label {
+  grid-column: 2;
+  grid-row: 1;
+  font-family: var(--font-sans);
+  font-size: var(--step--1);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-soft);
+}
+
+.pf-list__value {
+  grid-column: 2;
+  grid-row: 2;
+  font-family: var(--font-sans);
+  font-size: var(--step-0);
+  font-weight: 500;
+  line-height: 1.5;
+}
+
+/* La política de precios: no es un parámetro más, es la respuesta a
+ * «¿cuánto cuesta?». Fuera de la lista, con su filete de acento. */
+.price-note {
+  margin: 1.5rem 0 0;
+  padding-left: 1.1rem;
+  border-left: 2px solid var(--accent);
+  font-family: var(--font-display);
+  font-size: var(--step-0);
+  line-height: 1.5;
+  color: var(--text);
+  max-width: 44ch;
+}
+
+.price-note__label {
+  display: block;
+  font-family: var(--font-sans);
+  font-size: var(--step--1);
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-soft);
+  margin-bottom: 0.4rem;
+}
+
+/* El cierre de cada franja: la frase y la salida. */
+.pf-band__close {
+  margin-top: clamp(2.5rem, 4vw, 3.5rem);
+  padding-top: clamp(1.75rem, 3vw, 2.5rem);
+  border-top: 1px solid var(--line);
+}
+
+.pf-band__close-text {
+  font-family: var(--font-display);
+  font-size: var(--step-1);
+  line-height: 1.35;
+  margin: 0 0 1.4rem;
+  max-width: 36ch;
+}
+
+/* El cierre final: el rótulo entre dos reglas, como en la home. */
+.pf-closing {
+  margin-top: clamp(3rem, 6vw, 4.5rem);
+  padding-top: clamp(2rem, 4vw, 3rem);
+  border-top: 1px solid var(--line);
+  text-align: center;
+}
+
+.pf-closing__title {
+  font-size: var(--step-1);
+  line-height: 1.25;
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  margin: 0;
+}
+
+.pf-closing__title::before,
+.pf-closing__title::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--line-strong);
+}
+
+.pf-closing__text {
+  margin: 0.7rem 0 1.7rem;
+  font-size: var(--step-0);
+  color: var(--text-soft);
+}
+
+.pf-closing .btn-row {
+  justify-content: center;
+}
+/* ---------- 10.2 Home editorial: bloques del brief del cliente ---------- */
+/*
+ * Reconstrucción de la home segun el brief: techos primero, dos beneficios,
+ * servicios (sufitos/drzwi/schody), cennik y contacto directo.
+ * Todo sobre el mismo sistema: serif para las cifras y los nombres,
+ * versalitas para las etiquetas, filetes de 1 px y mucho aire.
+ */
+
+/* — Bloque SEDO: dos franjas (maqueta del cliente) — */
+/*
+ * La franja alta (`.sedo`) pone el texto a la izquierda y la foto a la
+ * derecha, SANGRADA hasta el borde de la pantalla: para eso la sección no
+ * lleva padding vertical y el texto se alinea con el contenedor del sitio.
+ * La franja baja (`.sedo-variants`) lleva las dos selecciones y la tarjeta
+ * del «sistema».
+ */
+
+.sedo {
+  padding-block: 0;
+}
+
+.sedo__grid {
+  display: grid;
+}
+
+@media (min-width: 62rem) {
+  .sedo__grid {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
+
+/* El texto empieza donde empieza el resto del sitio. */
+.sedo__body {
+  padding: clamp(2.5rem, 5vw, 4.5rem) clamp(1.25rem, 4vw, 3.5rem);
+  padding-left: max(clamp(1.25rem, 4vw, 3.5rem), calc((100vw - var(--container)) / 2));
+}
+
+.sedo__title {
+  font-size: var(--step-3);
+  line-height: 1.06;
+  margin: 0.55rem 0 1.1rem;
+}
+
+.sedo__lead {
+  font-size: var(--step-0);
+  line-height: 1.62;
+  color: var(--text);
+  max-width: 46ch;
+  margin: 0;
+}
+
+/* Las tres características: icono, título y texto, con filete al lado. */
+.sedo__features {
+  list-style: none;
+  padding: 0;
+  margin: clamp(1.75rem, 3vw, 2.5rem) 0 0;
+  display: grid;
+  gap: 1.5rem 1.75rem;
+}
+
+@media (min-width: 40rem) {
+  .sedo__features {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+/* El filete va ENTRE columnas, no delante de la primera: en la maqueta la
+ * primera arranca en el margen del texto y sólo se separan las que siguen.
+ * En móvil las tres se apilan y el filete estorba, así que sólo aparece
+ * cuando ya están en columnas. */
+.sedo__feature {
+  padding-left: 0;
+}
+
+@media (min-width: 40rem) {
+  .sedo__feature {
+    padding-left: 1.1rem;
+  }
+
+  .sedo__feature:first-child {
+    padding-left: 0;
+  }
+
+  .sedo__feature + .sedo__feature {
+    border-left: 1px solid var(--line);
+  }
+}
+
+.sedo__feature-icon {
+  width: 1.6rem;
+  height: 1.6rem;
+  color: var(--ink);
+  margin-bottom: 0.7rem;
+}
+
+.sedo__feature-title {
+  font-family: var(--font-display);
+  font-size: var(--step-0);
+  font-weight: 600;
+  line-height: 1.3;
+  margin: 0 0 0.4rem;
+}
+
+.sedo__feature-text {
+  font-size: var(--step--1);
+  line-height: 1.58;
+  color: var(--text-soft);
+  margin: 0;
+}
+
+/* Cierre: la pregunta que lleva al formulario. */
+.sedo__closing {
+  margin: clamp(1.75rem, 3vw, 2.25rem) 0 0;
+  font-family: var(--font-display);
+  font-size: var(--step-1);
+  line-height: 1.35;
+  color: var(--text);
+  max-width: 32ch;
+}
+
+/* Botones compactos para estas dos franjas.
+ *
+ * El botón base del sitio es más grande (0.9rem de padding, cuerpo grande) y
+ * en la maqueta del cliente estos dos salen más ceñidos: caben DOS en fila
+ * dentro de una columna estrecha, con la flecha pegada al texto. El tamaño
+ * escala con el viewport para que la fila no se rompa al estrechar.
+ */
+.sedo .btn,
+.sedo-variants .btn {
+  padding: 0.6rem 0.85rem;
+  font-size: clamp(0.66rem, 0.46rem + 0.34vw, 0.78rem);
+  letter-spacing: 0.05em;
+  gap: 0.45rem;
+  /* La etiqueta nunca se parte en dos líneas: en la maqueta los dos botones
+   * caben en fila y el texto va en una sola. */
+  white-space: nowrap;
+  /* Ni se estiran ni se encogen: si no caben, la fila se parte antes que la
+   * etiqueta. */
+  flex: none;
+}
+
+.sedo .btn__icon,
+.sedo-variants .btn__icon {
+  width: 0.95rem;
+  height: 0.95rem;
+  /* El `gap` del flex ya separa: sin margen, el icono queda pegado al texto
+   * como en la maqueta. */
+  margin-left: 0;
+}
+
+/* El botón de la franja alta, que la maqueta pone en fila. */
+.sedo__body .btn-row {
+  margin-top: clamp(1.25rem, 2vw, 1.6rem);
+  flex-wrap: wrap;
+}
+
+/* La foto, a sangre: ocupa toda la altura de la franja. */
+.sedo__figure {
+  position: relative;
+  margin: 0;
+  overflow: hidden;
+  background: var(--ink);
+}
+
+.sedo__figure img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.sedo__caption {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  max-width: 26rem;
+  padding: 3rem 1.5rem 1.5rem;
+  color: var(--cream);
+  font-size: var(--step--1);
+  line-height: 1.5;
+  background: linear-gradient(
+    to top right,
+    rgba(27, 22, 17, 0.78),
+    rgba(27, 22, 17, 0) 100%
+  );
+}
+
+.sedo__caption::before {
+  content: '';
+  display: block;
+  width: 1.75rem;
+  height: 1px;
+  background: currentColor;
+  opacity: 0.6;
+  margin-bottom: 0.65rem;
+}
+
+/* — Franja baja: las dos selecciones y la tarjeta del sistema — */
+
+.sedo-variants__grid {
+  display: grid;
+  gap: clamp(1.75rem, 3vw, 2.5rem);
+}
+
+@media (min-width: 62rem) {
+  .sedo-variants__grid {
+    /* La tarjeta del sistema se queda algo más ancha que en la maqueta:
+     * sus dos botones (pedir presupuesto + llamar) tienen que caber en fila
+     * sin apretar la etiqueta. */
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 1.55fr) minmax(0, 1.25fr);
+    /* Las tres columnas miden lo mismo: la banda cierra en recto, sin una
+     * tarjeta que cuelgue por debajo del resto. */
+    align-items: stretch;
+  }
+}
+
+.sedo-variants__title {
+  font-size: var(--step-2);
+  line-height: 1.14;
+  margin: 0.5rem 0 0.9rem;
+}
+
+.sedo-variants__lead {
+  font-size: var(--step-0);
+  line-height: 1.6;
+  color: var(--text-soft);
+  margin: 0;
+}
+
+/* Leyenda: dos entradas EN FILA (como en la maqueta), con miniatura redonda,
+ * nombre y una línea. Encima, un filete corto, no el filete a todo el ancho. */
+.sedo-variants__legend {
+  list-style: none;
+  padding: 1.5rem 0 0;
+  margin: 1.5rem 0 0;
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1rem 1.35rem;
+}
+
+/* La leyenda se va al pie de su columna: así el aire sobrante queda entre
+ * el texto y la leyenda, no debajo de la columna. */
+@media (min-width: 62rem) {
+  .sedo-variants__intro {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .sedo-variants__legend {
+    margin-top: auto;
+  }
+}
+
+@media (min-width: 40rem) {
+  .sedo-variants__legend {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.sedo-variants__legend::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 2.5rem;
+  height: 1px;
+  background: var(--line-strong);
+}
+
+.sedo-variants__legend-item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.85rem;
+  align-items: start;
+}
+
+.sedo-variants__thumb {
+  width: 2.6rem;
+  height: 2.6rem;
+  border-radius: 50%;
+  background-image: var(--thumb);
+  background-size: cover;
+  background-position: center;
+  display: block;
+}
+
+.sedo-variants__legend-title {
+  font-family: var(--font-display);
+  font-size: var(--step--1);
+  font-weight: 600;
+  margin: 0 0 0.2rem;
+}
+
+.sedo-variants__legend-text {
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: var(--text-soft);
+  margin: 0;
+}
+
+/* Las dos fotos del material: chapa encima y pie debajo. */
+.sedo-variants__shots {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: clamp(0.75rem, 1.5vw, 1.25rem);
+}
+
+.sedo-variants__shot {
+  margin: 0;
+}
+
+.sedo-variants__shot-media {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+  background: var(--sand);
+}
+
+/* En escritorio las fotos se estiran hasta el alto de la columna, para que
+ * las tres columnas de la banda midan lo mismo. */
+@media (min-width: 62rem) {
+  .sedo-variants__shots {
+    display: flex;
+  }
+
+  .sedo-variants__shot {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .sedo-variants__shot-media {
+    aspect-ratio: auto;
+    flex: 1;
+    min-height: 0;
+  }
+}
+
+.sedo-variants__shot-media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.sedo-variants__chip {
+  position: absolute;
+  top: 0.85rem;
+  left: 0.85rem;
+  padding: 0.32rem 0.7rem;
+  background: var(--ink);
+  color: var(--cream);
+  font-family: var(--font-sans);
+  font-size: var(--step--1);
+  font-weight: 600;
+  border-radius: 2px;
+}
+
+.sedo-variants__shot-caption {
+  padding: 0.7rem 0.85rem;
+  background: var(--cream);
+  font-size: var(--step--1);
+  color: var(--text-soft);
+}
+
+/* La tarjeta del sistema. */
+.sedo-variants__card {
+  background: var(--cream);
+  padding: clamp(1.35rem, 2.2vw, 1.65rem);
+  border-radius: var(--radius);
+  display: flex;
+  flex-direction: column;
+}
+
+.sedo-variants__card-title {
+  font-size: var(--step-0);
+  line-height: 1.22;
+  margin: 0 0 0.75rem;
+}
+
+.sedo-variants__card-text {
+  font-size: 0.95rem;
+  line-height: 1.55;
+  color: var(--text-soft);
+  margin: 0 0 1.1rem;
+}
+
+.sedo-variants__uses {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 1.15rem;
+  display: grid;
+  gap: 0.55rem;
+}
+
+.sedo-variants__use {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: var(--step--1);
+}
+
+.sedo-variants__use-icon {
+  width: 1.25rem;
+  height: 1.25rem;
+  color: var(--ink);
+  flex: none;
+}
+
+.sedo-variants__card .btn-row {
+  /* Los botones se van al pie de la tarjeta. */
+  margin-top: auto;
+  padding-top: 1rem;
+  border-top: 1px solid var(--line);
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+/* La llamada: en la maqueta no es un botón con caja, sino un enlace con el
+ * icono del teléfono al lado del texto. */
+.sedo-variants .btn--link {
+  --btn-bg: transparent;
+  --btn-fg: var(--text);
+  border-color: transparent;
+  padding-inline: 0.35rem;
+}
+
+.sedo-variants .btn--link:hover {
+  --btn-bg: transparent;
+  --btn-fg: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 0.25em;
+}
+
+/* Flecha del botón. */
+.btn__icon {
+  width: 1.05rem;
+  height: 1.05rem;
+  margin-left: 0.5rem;
+  flex: none;
+}
+
+/* ---------- 10.2 Página «Dla firm» ---------- */
+/*
+ * La página de colaboración con empresas tiene su propia estructura, la de la
+ * maqueta del cliente: hero a dos columnas con la foto a sangre, banda de
+ * cuatro características con icono, los tres pasos de la colaboración, los
+ * datos técnicos junto a las preguntas y el formulario.
+ */
+
+/* 01 · Hero: el texto a la izquierda, la foto a sangre a la derecha. */
+.trade-hero {
+  padding-block: 0;
+}
+
+.trade-hero__grid {
+  display: grid;
+}
+
+@media (min-width: 62rem) {
+  .trade-hero__grid {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
+
+/* El texto empieza donde empieza el resto del sitio. */
+.trade-hero__body {
+  padding: clamp(2.5rem, 5vw, 4.5rem) clamp(1.25rem, 4vw, 3.5rem);
+  padding-left: max(clamp(1.25rem, 4vw, 3.5rem), calc((100vw - var(--container)) / 2));
+}
+
+.trade-hero__title {
+  font-size: var(--step-3);
+  line-height: 1.08;
+  letter-spacing: -0.01em;
+  margin: 0.55rem 0 1.1rem;
+}
+
+.trade-hero__lead {
+  font-size: var(--step-0);
+  line-height: 1.6;
+  color: var(--text);
+  max-width: 44ch;
+  margin: 0;
+}
+
+.trade-hero__body .btn-row {
+  margin-top: clamp(1.5rem, 2.5vw, 2.1rem);
+}
+
+/*
+ * Botones compactos, como en la maqueta: los dos en fila dentro de la
+ * columna del hero. El botón base del sitio es más grande y no caben.
+ */
+.trade-hero__body .btn {
+  padding: 0.62rem 0.95rem;
+  font-size: clamp(0.66rem, 0.46rem + 0.34vw, 0.78rem);
+  letter-spacing: 0.05em;
+  gap: 0.45rem;
+}
+
+.trade-hero__body .btn__icon {
+  width: 0.95rem;
+  height: 0.95rem;
+  margin-left: 0;
+}
+
+.trade-hero__figure {
+  position: relative;
+  margin: 0;
+  overflow: hidden;
+  background: var(--ink);
+}
+
+/* La foto se ancla a la figura: si no, el `height: 100%` no resuelve contra
+ * la altura estirada de la rejilla y la imagen se queda en su proporción
+ * natural, dejando hueco debajo. */
+.trade-hero__figure img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+@media (max-width: 61.99rem) {
+  .trade-hero__figure {
+    aspect-ratio: 16 / 9;
+  }
+}
+
+/* 02 · Las cuatro características: icono, título y una frase. */
+.trade-features__lead {
+  font-size: var(--step-0);
+  line-height: 1.62;
+  color: var(--text-soft);
+  max-width: 74ch;
+  margin: 0 0 clamp(1.75rem, 3vw, 2.5rem);
+}
+
+.trade-features__list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 1.5rem 1.75rem;
+}
+
+@media (min-width: 48rem) {
+  .trade-features__list {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+/* El filete va ENTRE columnas, no delante de la primera. */
+.trade-feature {
+  padding-left: 0;
+}
+
+@media (min-width: 48rem) {
+  .trade-feature {
+    padding-left: 1.1rem;
+    border-left: 1px solid var(--line);
+  }
+
+  .trade-feature:first-child {
+    padding-left: 0;
+    border-left: 0;
+  }
+}
+
+.trade-feature__icon {
+  width: 1.75rem;
+  height: 1.75rem;
+  color: var(--ink);
+  margin-bottom: 0.8rem;
+}
+
+.trade-feature__title {
+  font-family: var(--font-sans);
+  font-size: var(--step-0);
+  font-weight: 600;
+  line-height: 1.3;
+  margin: 0 0 0.4rem;
+}
+
+.trade-feature__text {
+  font-size: var(--step--1);
+  line-height: 1.58;
+  color: var(--text-soft);
+  margin: 0;
+}
+
+/* 03 · Los tres pasos, sobre fondo oscuro. */
+.trade-steps__grid {
+  display: grid;
+  gap: clamp(2rem, 4vw, 3rem);
+}
+
+@media (min-width: 62rem) {
+  .trade-steps__grid {
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 2.1fr);
+    align-items: start;
+  }
+}
+
+.trade-steps__title {
+  font-size: var(--step-2);
+  line-height: 1.12;
+  margin: 0.5rem 0 0;
+}
+
+.trade-steps__list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: clamp(1.5rem, 2.5vw, 2rem);
+}
+
+@media (min-width: 62rem) {
+  .trade-steps__list {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: clamp(2rem, 3.5vw, 3rem);
+  }
+}
+
+.trade-step {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 1rem;
+  align-items: start;
+}
+
+/* El número es el ORDEN del paso, no un índice decorativo. */
+.trade-step__num {
+  font-family: var(--font-display);
+  font-size: var(--step-3);
+  line-height: 0.9;
+  color: var(--cream);
+  opacity: 0.5;
+}
+
+.trade-step__title {
+  font-family: var(--font-sans);
+  font-size: var(--step-0);
+  font-weight: 600;
+  line-height: 1.3;
+  margin: 0 0 0.4rem;
+}
+
+.trade-step__text {
+  font-size: var(--step--1);
+  line-height: 1.55;
+  color: var(--text-invert-soft);
+  margin: 0;
+}
+
+/* La flecha entre pasos: marca que son consecutivos. */
+@media (min-width: 62rem) {
+  .trade-step:not(:last-child)::after {
+    content: '→';
+    position: absolute;
+    top: 0.4rem;
+    right: calc(-1 * clamp(1rem, 2.2vw, 1.75rem));
+    color: var(--cream);
+    opacity: 0.4;
+    line-height: 1;
+  }
+}
+
+/* 04 · Datos técnicos a la izquierda, preguntas a la derecha. */
+.trade-info__grid {
+  display: grid;
+  gap: clamp(2.5rem, 4vw, 3.5rem);
+}
+
+@media (min-width: 62rem) {
+  .trade-info__grid {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr);
+    gap: clamp(3rem, 5vw, 4.5rem);
+  }
+}
+
+.trade-info__title {
+  font-size: var(--step-2);
+  line-height: 1.14;
+  margin: 0.5rem 0 0.7rem;
+}
+
+.trade-info__specs .specs {
+  margin-top: clamp(1.5rem, 2.5vw, 2rem);
+}
+
+/* Pie de la columna de datos: por qué no hay cennik y a quién llamar. */
+.trade-info__note {
+  margin-top: clamp(1.5rem, 2.5vw, 2rem);
+  padding-top: clamp(1.25rem, 2vw, 1.75rem);
+  border-top: 1px solid var(--line);
+}
+
+.trade-info__note p {
+  font-size: var(--step--1);
+  line-height: 1.6;
+  color: var(--text-soft);
+  margin: 0 0 1rem;
+  max-width: 44ch;
+}
+
+/* 05 · El formulario: centrado en su sección, sin foto al lado. */
+.trade-form__inner {
+  max-width: 54rem;
+  margin-inline: auto;
+}
+
+.trade-form__body {
+  text-align: center;
+}
+
+.trade-form__body .lede {
+  margin-inline: auto;
+  max-width: 52ch;
+}
+
+.trade-form__title {
+  font-size: var(--step-2);
+  line-height: 1.15;
+  margin: 0.5rem 0 0.8rem;
+}
+
+/* El formulario se lee de izquierda a derecha: el bloque va centrado en la
+ * sección, los campos no. */
+.trade-form__card {
+  margin-top: clamp(1.5rem, 2.5vw, 2rem);
+  padding: clamp(1.5rem, 3vw, 2.5rem);
+  text-align: left;
+}
+/* Banda de cierre con foto a la izquierda (la maqueta del cliente). */
+.cta-band--split {  padding-block: 0;
+}
+
+@media (min-width: 62rem) {
+  .cta-band--split {
+    display: grid;
+    grid-template-columns: minmax(0, 0.85fr) minmax(0, 2.15fr);
+    align-items: stretch;
+  }
+}
+
+.cta-band__figure {
+  position: relative;
+  margin: 0;
+  overflow: hidden;
+  background: var(--ink);
+}
+
+.cta-band__figure img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+@media (max-width: 61.99rem) {
+  .cta-band__figure {
+    aspect-ratio: 16 / 9;
+  }
+}
+
+.cta-band--split .container {
+  padding-block: clamp(2.5rem, 4vw, 3.75rem);
+}
+
+/* ---------- 10.3 Página de contacto ---------- */
+/*
+ * La maqueta del cliente: hero con foto y pie en columna, datos de contacto
+ * con icono a la izquierda y el formulario a la derecha, los tres pasos en
+ * banda clara y una franja de cierre con la madera.
+ */
+
+/* 01 · Hero: texto | foto | pie de foto. */
+.contact-hero__grid {
+  display: grid;
+  gap: clamp(1.5rem, 3vw, 2.5rem);
+  align-items: center;
+}
+
+@media (min-width: 62rem) {
+  .contact-hero__grid {
+    grid-template-columns: minmax(0, 1.12fr) minmax(0, 1fr) minmax(0, 0.42fr);
+  }
+}
+
+.contact-hero__title {
+  font-size: var(--step-3);
+  line-height: 1.08;
+  letter-spacing: -0.01em;
+  margin: 0.55rem 0 1.1rem;
+}
+
+.contact-hero__lead {
+  font-size: var(--step-0);
+  line-height: 1.6;
+  color: var(--text);
+  max-width: 44ch;
+  margin: 0;
+}
+
+.contact-hero__figure {
+  position: relative;
+  margin: 0;
+  overflow: hidden;
+  background: var(--ink);
+  aspect-ratio: 4 / 3;
+}
+
+.contact-hero__figure img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* Pie de foto: un filete y la frase en serif cursiva. */
+.contact-hero__caption {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: var(--step--1);
+  line-height: 1.55;
+  color: var(--text-soft);
+  margin: 0;
+  padding-top: 0.9rem;
+  border-top: 1px solid var(--line-strong);
+}
+
+@media (max-width: 61.99rem) {
+  .contact-hero__caption {
+    max-width: 46ch;
+  }
+}
+
+/* 02 · Datos de contacto. */
+.contact-main__grid {
+  display: grid;
+  gap: clamp(2.5rem, 5vw, 4rem);
+}
+
+@media (min-width: 62rem) {
+  .contact-main__grid {
+    grid-template-columns: minmax(0, 0.78fr) minmax(0, 1.22fr);
+    align-items: start;
+  }
+
+  /*
+   * La columna de datos ACOMPAÑA EL SCROLL mientras se rellena el
+   * formulario: dirección, teléfono, WhatsApp y el enlace al mapa se
+   * quedan a la vista, así que quien escribe no tiene que=subir a buscarlos.
+   *
+   * `position: sticky` + `align-items: start` (arriba) es lo que lo
+   * permite: el elemento se pega dentro del área de su fila de la rejilla,
+   * que es tan alta como el formulario. En móvil (una sola columna) NO se
+   * aplica: ahí el bloque va encima del formulario y no hay a qué «seguir».
+   */
+  .contact-details {
+    position: sticky;
+    /* La cabecera es pegajosa y mide 4,5 rem: debajo, con un poco de aire. */
+    top: 5.5rem;
+  }
+}
+
+.contact-details__brand {
+  padding-bottom: clamp(1.25rem, 2vw, 1.75rem);
+  border-bottom: 1px solid var(--line);
+}
+
+.contact-details__logo {
+  height: 3.25rem;
+}
+
+.contact-details__list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  padding-block: clamp(1.25rem, 2vw, 1.75rem);
+}
+
+.contact-detail {
+  display: grid;
+  grid-template-columns: 1.5rem minmax(0, 1fr);
+  gap: 0.85rem;
+  align-items: start;
+}
+
+.contact-detail + .contact-detail {
+  margin-top: 1.15rem;
+}
+
+.contact-detail__icon {
+  width: 1.5rem;
+  height: 1.5rem;
+  color: var(--ink);
+  margin-top: 0.1rem;
+}
+
+.contact-detail__body {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.contact-detail__value {
+  font-size: var(--step-0);
+  line-height: 1.35;
+}
+
+.contact-detail__value a {
+  text-decoration: none;
+}
+
+.contact-detail__value a:hover {
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+.contact-detail__note {
+  font-size: var(--step--1);
+  line-height: 1.5;
+  color: var(--text-soft);
+}
+
+.contact-details__whatsapp {
+  padding-block: clamp(1.25rem, 2vw, 1.75rem);
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+.contact-details__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.25rem 1.75rem;
+  margin: clamp(1.25rem, 2vw, 1.75rem) 0 0;
+}
+
+/* Caja de adjuntos: borde discontinuo, como en la maqueta. */
+.form__attachment {
+  display: grid;
+  grid-template-columns: 1.5rem minmax(0, 1fr);
+  gap: 0.75rem;
+  align-items: start;
+  margin-top: 1.25rem;
+  padding: 1rem 1.15rem;
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius);
+  transition:
+    border-color 0.15s ease,
+    background-color 0.15s ease;
+}
+
+.form__attachment[data-drag] {
+  border-color: var(--accent-strong);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+}
+
+.form__attachment-icon {
+  width: 1.5rem;
+  height: 1.5rem;
+  color: var(--ink);
+  margin-top: 0.1rem;
+}
+
+.form__attachment-label {
+  font-size: var(--step--1);
+  font-weight: 600;
+  color: var(--text);
+  margin: 0 0 0.2rem;
+}
+
+.form__attachment-optional {
+  font-weight: 400;
+  color: var(--text-soft);
+}
+
+.form__attachment-hint {
+  font-size: var(--step--1);
+  color: var(--text-soft);
+  margin: 0 0 0.7rem;
+}
+
+.form__attachment-files {
+  font-size: var(--step--1);
+  font-weight: 600;
+  color: var(--accent-strong);
+  margin: 0.7rem 0 0;
+  overflow-wrap: anywhere;
+}
+
+.form__attachment-files:empty {
+  display: none;
+}
+
+.form__attachment-note {
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: var(--text-soft);
+  margin: 0.7rem 0 0;
+  max-width: 52ch;
+}
+
+/* El input real se esconde: el botón es su etiqueta. */
+.form__attachment-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Botón pequeño — para acciones dentro del formulario. */
+.btn--small {
+  padding: 0.5rem 0.85rem;
+  font-size: 0.78rem;
+}
+
+/* La carta del formulario: borde, no relleno — el formulario ya es claro. */
+.contact-form__card {
+  border: 1px solid var(--line-strong);
+  padding: clamp(1.5rem, 3vw, 2.75rem);
+}
+
+.contact-form__title {
+  font-size: var(--step-2);
+  line-height: 1.15;
+  margin: 0.5rem 0 0.7rem;
+}
+
+/* 03 · Los tres pasos. */
+.contact-steps {
+  padding-top: 0;
+  padding-bottom: clamp(2.5rem, 4vw, 4rem);
+}
+
+.contact-steps__list {
+  list-style: none;
+  padding: clamp(2rem, 3vw, 2.75rem) 0 0;
+  margin: 0;
+  border-top: 1px solid var(--line);
+  display: grid;
+  gap: clamp(1.75rem, 3vw, 2.5rem);
+}
+
+@media (min-width: 56rem) {
+  .contact-steps__list {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.contact-step {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 1rem;
+  align-items: start;
+  padding-right: 2rem;
+}
+
+@media (min-width: 56rem) {
+  .contact-step + .contact-step {
+    border-left: 1px solid var(--line);
+    padding-left: clamp(1.5rem, 3vw, 2.5rem);
+  }
+}
+
+.contact-step__num {
+  font-family: var(--font-display);
+  font-size: var(--step-4);
+  line-height: 0.82;
+  color: var(--ink);
+}
+
+.contact-step__title {
+  font-family: var(--font-display);
+  font-size: var(--step-0);
+  font-weight: 400;
+  line-height: 1.25;
+  margin: 0 0 0.45rem;
+}
+
+.contact-step__text {
+  font-size: var(--step--1);
+  line-height: 1.55;
+  color: var(--text-soft);
+  margin: 0;
+}
+
+/* La flecha marca que los pasos son consecutivos. */
+.contact-step:not(:last-child)::after {
+  content: '→';
+  position: absolute;
+  top: 0.2rem;
+  right: 0;
+  color: var(--ink);
+  opacity: 0.55;
+  line-height: 1;
+}
+
+@media (max-width: 55.99rem) {
+  .contact-step:not(:last-child)::after {
+    display: none;
+  }
+}
+
+/* 04 · Franja de cierre. */
+.contact-closing {
+  padding-block: 0;
+  background: var(--oak);
+  color: var(--ink);
+  display: grid;
+}
+
+@media (min-width: 62rem) {
+  .contact-closing {
+    grid-template-columns: minmax(0, 0.85fr) minmax(0, 2.15fr);
+    align-items: stretch;
+  }
+}
+
+.contact-closing__figure {
+  position: relative;
+  margin: 0;
+  overflow: hidden;
+  background: var(--ink);
+}
+
+.contact-closing__figure img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+@media (max-width: 61.99rem) {
+  .contact-closing__figure {
+    aspect-ratio: 16 / 9;
+  }
+}
+
+.contact-closing__body {
+  padding: clamp(2.5rem, 5vw, 4rem) clamp(1.25rem, 4vw, 3.5rem);
+  text-align: center;
+  align-self: center;
+}
+
+.contact-closing__title {
+  font-size: var(--step-2);
+  line-height: 1.15;
+  margin: 0 0 0.9rem;
+}
+
+.contact-closing__phone {
+  font-size: var(--step-1);
+  line-height: 1.3;
+  margin: 0 0 0.75rem;
+}
+
+.contact-closing__phone a {
+  text-decoration: none;
+}
+
+.contact-closing__phone a:hover {
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+.contact-closing__text {
+  font-size: var(--step--1);
+  line-height: 1.6;
+  margin: 0;
+  /*
+   * SIN `opacity`: sobre `--oak` el texto a 85 % baja a 3,81:1 y se queda
+   * por debajo del umbral AA de 4,5:1. El color plano da 4,56:1.
+   */
+  color: var(--ink);
+}
+
+
+/* — 02 · Definición: frase grande + cifras — */
+.statement__text {
+  font-family: var(--font-display);
+  font-size: clamp(1.45rem, 1.1rem + 1.2vw, 2rem);
+  line-height: 1.42;
+  letter-spacing: -0.01em;
+  color: var(--text);
+  max-width: 46ch;
+}
+
+.statement__note {
+  margin-top: 1.1rem;
+  font-size: var(--step-0);
+  color: var(--text-soft);
+  max-width: 52ch;
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: clamp(1.75rem, 3vw, 2.5rem);
+  border-top: 1px solid var(--line-strong);
+}
+
+@media (min-width: 48rem) {
+  .stats {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.stats__item {
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 0.35rem;
+  padding: 1.1rem 1rem 1.1rem 0;
+  border-bottom: 1px solid var(--line);
+}
+
+@media (min-width: 48rem) {
+  .stats__item {
+    border-bottom: 0;
+    border-right: 1px solid var(--line);
+    padding-right: 1.25rem;
+  }
+
+  .stats__item:last-child {
+    border-right: 0;
+    padding-right: 0;
+  }
+}
+
+.stats__label {
+  font-family: var(--font-sans);
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-soft);
+}
+
+.stats__value {
+  font-family: var(--font-display);
+  font-size: var(--step-2);
+  line-height: 1.05;
+  color: var(--text);
+}
+
+.statement__link {
+  margin-top: 1.75rem;
+}
+
+/* — 05 · Servicios — */
+.services {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  gap: clamp(1.5rem, 3vw, 2.5rem);
+  margin-top: clamp(1rem, 2vw, 1.5rem);
+}
+
+@media (min-width: 48rem) {
+  .services {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: clamp(1.5rem, 3vw, 3rem);
+  }
+}
+
+.service {
+  border-top: 2px solid var(--ink);
+  padding-top: 1.1rem;
+}
+
+.service__name {
+  font-family: var(--font-display);
+  font-size: var(--step-2);
+  font-weight: 400;
+  line-height: 1.1;
+}
+
+.service__text {
+  margin-top: 0.6rem;
+  color: var(--text-soft);
+  max-width: 36ch;
+}
+
+/* — 06 · Cennik + contacto — */
+.quote-block {
+  display: grid;
+  gap: clamp(2rem, 4vw, 3.5rem);
+}
+
+@media (min-width: 62rem) {
+  .quote-block {
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.75fr);
+    align-items: start;
+  }
+}
+
+.quote-block__lead {
+  font-family: var(--font-display);
+  font-size: var(--step-1);
+  line-height: 1.5;
+  color: var(--text);
+  max-width: 48ch;
+}
+
+.quote-block__bullets {
+  list-style: none;
+  padding: 0;
+  margin-top: 1.25rem;
+  display: grid;
+  gap: 0.6rem;
+}
+
+.quote-block__bullets li {
+  position: relative;
+  padding-left: 1.4rem;
+  color: var(--text-soft);
+  max-width: 46ch;
+}
+
+.quote-block__bullets li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0.72em;
+  width: 0.6rem;
+  height: 1px;
+  background: var(--accent-strong);
+}
+
+.contact-card {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: clamp(1.5rem, 2.5vw, 2rem);
+  display: grid;
+  gap: 1rem;
+}
+
+.contact-card__title {
+  font-family: var(--font-sans);
+  font-size: var(--step--1);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+
+.contact-card__list {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  gap: 0.85rem;
+}
+
+.contact-card__list li {
+  display: grid;
+  gap: 0.15rem;
+  padding-bottom: 0.85rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.contact-card__list li:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.contact-card__label {
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-soft);
+}
+
+.contact-card__value {
+  font-family: var(--font-display);
+  font-size: var(--step-1);
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.contact-card__value:hover {
+  text-decoration: underline;
+}
+
+.contact-card__meta {
+  font-size: var(--step--1);
+  color: var(--text-soft);
+}
+
+/* CTA de cierre: en la variante oscura los tres botones van apilados y a la
+   misma anchura. Con `flex-wrap` caían 2+1 y el de WhatsApp se quedaba solo
+   ocupando toda la fila: parecía un error de maquetación, no una jerarquía. */
+.cta-band--dark .cta-band__actions .btn-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.6rem;
+}
+
+.cta-band--dark .cta-band__actions .btn {
+  width: 100%;
+}
+
+
+/* ---------- 11. Lista wyróżników ---------- */
+
+/* Domyślnie trzy kolumny. Wewnątrz `.split` (pół strony, ~589 px) trzy
+   kolumny dawały 175 px szerokości na tekst — za wąsko, każdy tytuł
+   łamał się na dwa wiersze. Tam lista idzie w jedną kolumnę. */
+.highlights {
+  display: grid;
+  gap: clamp(1.25rem, 2.5vw, 2rem);
+  counter-reset: hl;
+}
+
+@media (min-width: 48rem) {
+  .highlights {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+/* Cztery pozycje: 2×2 na tablecie i 4×1 na desktopie — w obu przypadkach
+   ostatnia wiersz jest pełny. Przy trzech kolumnach czwarte miejsce
+   zostawiało dwie trzecie pustego wiersza. */
+.highlights--4 {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+@media (min-width: 48rem) {
+  .highlights--4 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 72rem) {
+  .highlights--4 {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 60rem) {
+  .split .highlights {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.highlight {
+  border-top: 1px solid var(--line-strong);
+  padding-top: 1.1rem;
+}
+
+.section--dark .highlight {
+  border-top-color: var(--line-invert);
+}
+
+.highlight__title {
+  font-size: var(--step-1);
+  margin-bottom: 0.45rem;
+}
+
+.highlight__text {
+  font-size: var(--step--1);
+  color: var(--text-soft);
+  line-height: 1.62;
+}
+
+.section--dark .highlight__text {
+  color: var(--text-invert-soft);
+}
+
+/* ---------- 13. Zastosowania ---------- */
+
+.grid-apps {
+  display: grid;
+  gap: 0;
+  border-top: 1px solid var(--line);
+}
+
+@media (min-width: 46rem) {
+  .grid-apps {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 72rem) {
+  .grid-apps {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.app {
+  padding: clamp(1.25rem, 2.5vw, 2rem);
+  border-bottom: 1px solid var(--line);
+  border-right: 1px solid var(--line);
+}
+
+.app__title {
+  font-size: var(--step-1);
+  margin-bottom: 0.4rem;
+}
+
+.app__text {
+  font-size: var(--step--1);
+  color: var(--text-soft);
+  line-height: 1.6;
+}
+
+/* ---------- 13. Galeria ---------- */
+
+.gallery-grid {
+  display: grid;
+  gap: clamp(0.75rem, 1.5vw, 1.25rem);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+@media (min-width: 54rem) {
+  .gallery-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+/* Produkt z dwoma zdjęciami: dwie kolumny wypełniają wiersz bez pustki. */
+@media (min-width: 54rem) {
+  .gallery-grid--2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* Nieparzysta liczba zdjęć poniżej 54rem: w dwóch kolumnach ostatnie
+   zostawało samo w wierszu (pusta połowa). Zajmuje całą szerokość. */
+@media (max-width: 53.99rem) {
+  .gallery-grid--odd > :last-child {
+    grid-column: span 2;
+  }
+}
+
+/* Galeria realizacji: jedno zdjęcie na całą szerokość + osiem w czterech
+   kolumnach (2 pełne wiersze). W siatce 3-kolumnowej z dwoma „szerokimi"
+   ostatni wiersz zostawał pusty. */
+@media (min-width: 54rem) {
+  .gallery-grid--page {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .gallery-grid--page .gallery-grid__item--wide {
+    grid-column: span 4;
+    aspect-ratio: 16 / 9;
+  }
+}
+
+.gallery-grid__item {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius);
+  background: var(--sand);
+  aspect-ratio: var(--tile-ratio, 3 / 4);
+}
+
+/* Ficha con la proporción REAL de la foto, sin recorte. Necesaria cuando la
+   imagen lleva rótulos impresos dentro del encuadre (el gráfico de SEDO con
+   «Bez nud» / «Z nudami»): al recortarla a 3/4 los rótulos se cortaban por
+   los lados y la ficha parecía rota. `align-self: start` evita que la fila
+   estire la ficha a la altura de las vecinas —eso devolvería el recorte. */
+.gallery-grid__item--natural {
+  align-self: start;
+}
+
+/* Banda a lo ancho: la foto ocupa la fila entera. Es donde va el gráfico de
+   SEDO, que es 3/2 y con rótulos: recortado a 3/4 perdía las etiquetas. Con
+   `1 / -1` la banda funciona igual en la rejilla de 2, 3 o 4 columnas. */
+.gallery-grid__item--full {
+  grid-column: 1 / -1;
+}
+
+.gallery-grid__item--wide {
+  grid-column: span 2;
+  aspect-ratio: 2 / 1;
+}
+
+@media (max-width: 53.99rem) {
+  .gallery-grid__item--wide {
+    grid-column: span 2;
+    aspect-ratio: 3 / 2;
+  }
+}
+
+.gallery-grid__item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.6s cubic-bezier(0.2, 0.6, 0.2, 1);
+}
+
+.gallery-grid__item:hover img {
+  transform: scale(1.035);
+}
+
+.gallery-grid__caption {
+  position: absolute;
+  inset: auto 0 0 0;
+  padding: 2.5rem 1rem 0.9rem;
+  background: linear-gradient(to top, color-mix(in srgb, var(--ink) 88%, transparent), transparent);
+  color: var(--cream);
+  font-size: var(--step--1);
+}
+
+/* ---------- 14. FAQ ---------- */
+
+/* Szerokość kolumny: pytanie i znak „+" muszą być ze sobą powiązane.
+   Na pełnym kontenerze (1224 px) `justify-content: space-between` zostawiał
+   między nimi ponad 900 px pustki — lista wyglądała jak „chorizo".
+   40 rem = 640 px mieści najdłuższe pytanie (58 znaków) w jednym wierszu. */
+.faq {
+  border-top: 1px solid var(--line);
+  max-width: 40rem;
+}
+
+/* Dwie kolumny dla list o parzystej liczbie pytań — sekcja wypełnia wtedy
+   całą szerokość, a nie pół. Proporcje kolumn te same co w nagłówku
+   `.section-head--split`, żeby pytania stały pod swoim nagłówkiem. */
+@media (min-width: 64rem) {
+  .faq--2 {
+    max-width: none;
+    display: grid;
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+    column-gap: clamp(2rem, 5vw, 5rem);
+  }
+}
+
+.faq__item {
+  border-bottom: 1px solid var(--line);
+}
+
+.faq__question {
+  width: 100%;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1.5rem;
+  padding-block: 1.35rem;
+  background: none;
+  border: 0;
+  text-align: left;
+  font-family: var(--font-display);
+  font-size: var(--step-1);
+  line-height: 1.3;
+  color: inherit;
+  cursor: pointer;
+  list-style: none;
+}
+
+.faq__question::-webkit-details-marker {
+  display: none;
+}
+
+.faq__question::marker {
+  content: '';
+}
+
+.faq__question:hover {
+  color: var(--accent-strong);
+}
+
+.faq__icon {
+  flex: none;
+  width: 1.1rem;
+  height: 1.1rem;
+  margin-top: 0.35rem;
+  position: relative;
+}
+
+.faq__icon::before,
+.faq__icon::after {
+  content: '';
+  position: absolute;
+  background: currentColor;
+  transition: transform 0.22s ease;
+}
+
+.faq__icon::before {
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 1px;
+}
+
+.faq__icon::after {
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+}
+
+.faq__item[open] .faq__icon::after {
+  transform: scaleY(0);
+}
+
+.faq__answer {
+  padding-bottom: 1.5rem;
+}
+
+.faq__answer p {
+  color: var(--text-soft);
+  max-width: 70ch;
+}
+
+/* ---------- 15. Formularz ---------- */
+
+.form {
+  display: grid;
+  gap: 1.15rem;
+}
+
+.form__grid {
+  display: grid;
+  gap: 1.15rem;
+}
+
+@media (min-width: 44rem) {
+  .form__grid--two {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* ---------- 15.1 Wybór embudu (radio + CSS, bez JS) ---------- */
+
+/*
+ * Grupa pól jednego embudu.
+ *
+ * `fieldset` zamiast `div` — przeglądarka pomija pola w wyłączonym
+ * `fieldset`, a my tego nie potrzebujemy: ukrywamy zestaw atrybutem
+ * `data-active`, a wartości zbieramy jawnie (tylko z aktywnego embudu).
+ *
+ * BEZ JavaScriptu widać OBA zestawy pól i nie widać pytania o embudo —
+ * pytanie bez skryptu nic nie robi, a gość musi mieć dostęp do obu
+ * zestawów. Z JavaScriptem (`klasa .js` na `<html>`) widać tylko wybrany.
+ */
+.form__group {
+  display: grid;
+  gap: 1.15rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+
+/* Radio jest niewidoczne, ale nie `display: none` — musi dać się w niego
+   kliknąć etykietą i trafić klawiaturą (focus). */
+.form__choice-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Pytanie o embudo — tylko z JavaScriptem. */
+.form__choice {
+  display: none;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.js .form__choice {
+  display: grid;
+}
+
+/* Z JavaScriptem: tylko zestaw z `data-active`. */
+.js .form__group {
+  display: none;
+}
+
+.js .form__group[data-active] {
+  display: grid;
+}
+
+.form__choice-legend {
+  padding: 0;
+  font-size: var(--step-0);
+  font-weight: 600;
+  color: var(--text);
+}
+
+.form__choice-grid {
+  display: grid;
+  gap: 0.75rem;
+}
+
+@media (min-width: 44rem) {
+  .form__choice-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.form__choice-option {
+  position: relative;
+  display: grid;
+  grid-template-columns: 2.25rem minmax(0, 1fr);
+  grid-template-areas:
+    'icon label'
+    'icon hint';
+  gap: 0.2rem 0.75rem;
+  align-items: start;
+  padding: 0.9rem 2.4rem 0.9rem 1rem;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    background-color 0.15s ease;
+}
+
+.form__choice-option:hover {
+  border-color: var(--accent-strong);
+}
+
+/* Pictograma del material: listwy ułożone al panel. */
+.form__choice-icon {
+  grid-area: icon;
+  width: 2.25rem;
+  height: 2.25rem;
+  color: var(--ink);
+  margin-top: 0.05rem;
+}
+
+.form__choice-label {
+  grid-area: label;
+  font-size: var(--step-0);
+  font-weight: 600;
+  color: var(--text);
+}
+
+.form__choice-hint {
+  grid-area: hint;
+  font-size: var(--step--1);
+  color: var(--text-soft);
+  line-height: 1.5;
+}
+
+/* Estado zaznaczenia: `:checked ~` działa bez JavaScriptu. */
+.form__choice-input:checked ~ .form__choice-label {
+  color: var(--accent-strong);
+}
+
+/* Marca de elegido: círculo con el tick, como en la maqueta. */
+.form__choice-check {
+  position: absolute;
+  top: 0.85rem;
+  right: 0.85rem;
+  width: 1.25rem;
+  height: 1.25rem;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--ink);
+  color: var(--paper);
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.form__choice-check svg {
+  width: 0.75rem;
+  height: 0.75rem;
+}
+
+.form__choice-input:checked ~ .form__choice-check {
+  opacity: 1;
+}
+
+.form__choice-input:focus-visible ~ .form__choice-label {
+  outline: 2px solid var(--accent-strong);
+  outline-offset: 3px;
+}
+
+/*
+ * Który zestaw pól jest widoczny — sterowane atrybutem `data-active`,
+ * który ustawia skrypt po zmianie radia. Bez JavaScriptu widoczne są
+ * oba zestawy (patrz wyżej), więc pytanie nie zostawia gościa bez
+ * drogi: formularz działa, tylko ma więcej pól.
+ */
+.form__group[hidden] {
+  display: none;
+}
+
+/* Podpowiedź pod polem — mniejsza niż etykieta, ale czytelna. */
+.field__hint {
+  font-size: var(--step--1);
+  color: var(--text-soft);
+  line-height: 1.5;
+}
+
+.field {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.field__label {
+  font-size: var(--step--1);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.field__label .req {
+  color: var(--accent-strong);
+  margin-left: 0.2rem;
+}
+
+.field__control {
+  width: 100%;
+  padding: 0.8rem 0.95rem;
+  background: var(--paper);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  font-size: var(--step-0);
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.field__control:focus {
+  border-color: var(--accent-strong);
+  outline: none;
+  background: #fff;
+}
+
+.field__control:focus-visible {
+  outline: 2px solid var(--accent-strong);
+  outline-offset: 1px;
+}
+
+textarea.field__control {
+  min-height: 9rem;
+  resize: vertical;
+}
+
+select.field__control {
+  appearance: none;
+  background-image: linear-gradient(45deg, transparent 50%, var(--text-soft) 50%),
+    linear-gradient(135deg, var(--text-soft) 50%, transparent 50%);
+  background-position:
+    calc(100% - 1.15rem) 55%,
+    calc(100% - 0.85rem) 55%;
+  background-size: 0.3rem 0.3rem;
+  background-repeat: no-repeat;
+  padding-right: 2.5rem;
+}
+
+.field__error {
+  font-size: var(--step--1);
+  color: #a63a2a;
+  min-height: 0;
+}
+
+.field[data-invalid='true'] .field__control {
+  border-color: #a63a2a;
+}
+
+.consent {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.7rem;
+  align-items: start;
+}
+
+.consent input {
+  width: 1.1rem;
+  height: 1.1rem;
+  margin-top: 0.3rem;
+  accent-color: var(--accent-strong);
+}
+
+/* Zaznaczone brak zgody — taka sama konwencja co przy `.field__control`. */
+.consent[data-invalid='true'] input {
+  outline: 2px solid #a63a2a;
+  outline-offset: 2px;
+}
+
+.consent label {
+  font-size: var(--step--1);
+  color: var(--text-soft);
+  line-height: 1.55;
+}
+
+.form__status {
+  padding: 0.95rem 1.15rem;
+  border-radius: var(--radius);
+  font-size: var(--step--1);
+  border: 1px solid transparent;
+  display: none;
+}
+
+.form__status[data-state='error'] {
+  display: block;
+  border-color: #d9a99f;
+  background: #fdf1ef;
+  color: #7d2a1c;
+}
+
+/*
+ * Wynik formularza — dwa stany i każdy mówi prawdę:
+ *   'sent'     → zapytanie dotarło do endpointu;
+ *   'prepared' → otworzyliśmy klienta poczty, wiadomość JESZCZE NIE poszła.
+ * Bez endpointu nie wolno pokazać 'sent': lead by zniknął bez śladu.
+ *
+ * OJO: tu poniżej NIE MA `data-state='success'`. Skrypt ustawia 'sent'
+ * (zob. `showResult('sent', …)` w `QuoteForm.astro`), a selektor na
+ * 'success' nigdy nie trafiał: blok z komunikatem se ustawiał, ale se
+ * NIE pokazywał (`display: none`). To samo z weryfikatorem — sprawdzał
+ * tekst w DOM, nie to, czy blok jest widoczny.
+ */
+.form__status[data-state='sent'] {
+  display: block;
+  border-color: #b6cfae;
+  background: #f1f6ee;
+  color: #33502a;
+}
+.form__status[data-state='prepared'] {
+  display: block;
+  border-color: var(--line-strong);
+  background: var(--cream);
+  color: var(--bark);
+}
+
+.form__status-title {
+  font-weight: 600;
+  margin: 0 0 0.35rem;
+}
+
+.form__status-text {
+  margin: 0;
+}
+
+.form__status-actions {
+  display: none;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin: 0.9rem 0 0;
+}
+
+.form__status-actions[data-show] {
+  display: flex;
+}
+
+.form__fallback {
+  font-size: var(--step--1);
+  color: var(--text-soft);
+}
+
+.form__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.form__intro {
+  font-size: var(--step--1);
+  color: var(--text-soft);
+  margin-bottom: 1.25rem;
+}
+
+.consent__link {
+  color: var(--accent-strong);
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+
+/* Linki pomocnicze w stopce (dla firm, dostawa, polityka). */
+.footer__legal {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+}
+
+.footer__legal a {
+  color: inherit;
+}
+
+.form__fallback a {
+  color: var(--accent-strong);
+}
+
+/* Formularz na ciemnym tle: etykiety muszą być jasne, inaczej nie są czytelne. */
+.section--dark .field__label,
+.section--dark .consent label {
+  color: var(--cream);
+}
+
+.section--dark .field__error {
+  color: #e9a196;
+}
+
+.section--dark .form__fallback {
+  color: var(--text-invert-soft);
+}
+
+.section--dark .form__fallback a {
+  color: var(--straw);
+}
+
+.section--dark .field__control {
+  background: var(--paper);
+  border-color: var(--line-strong);
+  color: var(--ink);
+}
+
+/* Jasna karta (.card) wewnątrz ciemnej sekcji — np. formularz wyceny na
+   stronie produktu. Tło karty jest jasne, więc jasne kolory sekcji nie mogą
+   tu obowiązywać: bez tego etykiety miały 1,07:1 i były nieczytelne.
+   Wszystko, co dziedziczy kolor (np. <strong> z numerem telefonu), wraca
+   do motywu jasnego dzięki `color` na samej karcie. */
+.section--dark .card {
+  color: var(--text);
+}
+
+.section--dark .card h1,
+.section--dark .card h2,
+.section--dark .card h3,
+.section--dark .card .field__label,
+.section--dark .card .consent label {
+  color: var(--text);
+}
+
+.section--dark .card .kicker {
+  color: var(--accent-strong);
+}
+
+.section--dark .card .lede,
+.section--dark .card .prose p,
+.section--dark .card .form__fallback {
+  color: var(--text-soft);
+}
+
+.section--dark .card .form__fallback a {
+  color: var(--accent-strong);
+}
+
+.section--dark .card .field__error {
+  color: #a63a2a;
+}
+
+.section--dark .card .btn--ghost {
+  --btn-fg: var(--ink);
+  border-color: var(--line-strong);
+}
+
+.section--dark .card .btn--ghost:hover {
+  --btn-bg: var(--ink);
+  --btn-fg: var(--cream);
+}
+
+.section--dark .card :focus-visible {
+  outline-color: var(--accent-strong);
+}
+
+/* ---------- 16. Stopka ---------- */
+
+.site-footer {
+  background: var(--ink);
+  color: var(--text-invert);
+  padding-block: clamp(2.5rem, 5vw, 4rem) 2rem;
+}
+
+.site-footer a {
+  color: var(--text-invert-soft);
+  text-decoration: none;
+}
+
+.site-footer a:hover {
+  color: var(--cream);
+}
+
+.footer__grid {
+  display: grid;
+  gap: clamp(1.75rem, 3vw, 2.5rem);
+  padding-bottom: 2.5rem;
+  border-bottom: 1px solid var(--line-invert);
+}
+
+@media (min-width: 48rem) {
+  .footer__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 72rem) {
+  .footer__grid {
+    grid-template-columns: 1.4fr 1fr 1fr 1.2fr;
+  }
+}
+
+.footer__title {
+  font-family: var(--font-sans);
+  font-size: var(--step--1);
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--straw);
+  margin-bottom: 1rem;
+}
+
+.footer__list {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  gap: 0.6rem;
+  font-size: var(--step--1);
+}
+
+.footer__brand p {
+  color: var(--text-invert-soft);
+  font-size: var(--step--1);
+  margin-top: 1rem;
+  max-width: 32ch;
+}
+
+.footer__bottom {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-top: 1.75rem;
+  font-size: var(--step--1);
+  color: var(--text-invert-soft);
+}
+
+.footer__contact {
+  display: grid;
+  gap: 0.4rem;
+  font-size: var(--step--1);
+}
+
+.footer__contact strong {
+  color: var(--cream);
+  display: block;
+  font-size: var(--step-0);
+}
+
+.footer__lang {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-top: 1rem;
+}
+
+.footer__lang .lang {
+  border-color: var(--line-invert);
+  background: transparent;
+}
+
+.footer__lang .lang__item {
+  color: var(--text-invert-soft);
+}
+
+.footer__lang .lang__item:hover {
+  color: var(--cream);
+  background: color-mix(in srgb, var(--cream) 10%, transparent);
+}
+
+.footer__lang .lang__item[aria-current='true'] {
+  background: var(--cream);
+  color: var(--ink);
+}
+
+/* ---------- 17. Nagłówek strony ---------- */
+
+.page-head {
+  padding-block: clamp(2.5rem, 5vw, 4.5rem) clamp(2rem, 4vw, 3.5rem);
+}
+
+.page-head__inner {
+  display: grid;
+  gap: 1.15rem;
+  max-width: 60ch;
+}
+
+.page-head__title {
+  font-size: var(--step-4);
+}
+
+/* 404: accesos directos a lo que sí existe (no una banda de CTA apilada). */
+.not-found__links {
+  list-style: none;
+  padding: 0;
+  margin-top: clamp(1.5rem, 3vw, 2.5rem);
+  display: grid;
+  gap: 0.9rem;
+  font-size: var(--step-0);
+}
+
+.not-found__links a {
+  font-weight: 500;
+}
+
+/* ---------- 18. CTA ---------- */
+
+.cta-band {
+  background: var(--oak);
+  color: var(--ink);
+}
+
+.cta-band__inner {
+  display: grid;
+  gap: clamp(1.25rem, 3vw, 2.5rem);
+  align-items: center;
+}
+
+@media (min-width: 60rem) {
+  .cta-band__inner {
+    grid-template-columns: minmax(0, 1.3fr) minmax(0, 0.7fr);
+  }
+}
+
+.cta-band__title {
+  font-size: var(--step-3);
+}
+
+.cta-band__text {
+  margin-top: 0.75rem;
+  max-width: 46ch;
+  /* Pełny `--ink`, nie mieszane z przezroczystością: przy 78% krycia ten
+     tekst dawał 3,45:1 na `--oak` (potrzeba 4,5:1). W pełnej czerni
+     4,56:1. Hierarchię niesie rozmiar (38,4 px tytuł vs 17,9 px tekst),
+     a nie rozjaśnianie koloru. */
+  color: var(--ink);
+}
+
+.cta-band .btn {
+  --btn-bg: var(--ink);
+  --btn-fg: var(--cream);
+}
+
+.cta-band .btn:hover {
+  --btn-bg: var(--cream);
+  --btn-fg: var(--ink);
+}
+
+/* ---------- 19. Dane kontaktowe ---------- */
+
+.contact-list {
+  display: grid;
+  gap: 1.4rem;
+}
+
+.contact-item {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.contact-item__label {
+  font-size: var(--step--1);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-soft);
+  font-weight: 600;
+}
+
+.contact-item__value {
+  font-family: var(--font-display);
+  font-size: var(--step-1);
+}
+
+.contact-item__value a {
+  text-decoration: none;
+  border-bottom: 1px solid var(--line-strong);
+}
+
+.contact-item__value a:hover {
+  border-bottom-color: var(--accent-strong);
+}
+
+/* ---------- 20. Utility ---------- */
+
+.text-soft {
+  color: var(--text-soft);
+}
+
+.mt-lg {
+  margin-top: clamp(1.5rem, 3vw, 2.5rem);
+}
+
+.no-wrap {
+  white-space: nowrap;
+}
+
+/* =====================================================================
+   21. EMBUDO DE VENTA
+   ---------------------------------------------------------------------
+   Bloques nuevos del embudo (src/content/funnel.ts + los componentes
+   HowItWorks, TrustBar, ObjectionList, SectionCta, StickyCta, ProofFigure).
+
+   Reglas de gama alta (ESTRATEGIA §5.0): sin degradados, sin sombras, sin
+   glassmorphism, sin esquinas redondeadas más allá de `--radius`, sin
+   badges. El plano se consigue con superficie, hairline y aire. Un único
+   acento cálido (`--straw`) reservado a lo accionable en móvil.
+   ===================================================================== */
+
+/* ---------- 21.1 Bloque de 3 pasos ---------- */
+
+.how-it-works {
+  display: grid;
+  gap: clamp(2rem, 4vw, 3.25rem);
+}
+
+.how-it-works__head {
+  display: grid;
+  gap: 0.8rem;
+  max-width: 62ch;
+}
+
+.how-it-works__title {
+  font-size: var(--step-3);
+}
+
+.how-it-works__list {
+  list-style: none;
+  display: grid;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+}
+
+.how-it-works__step {
+  display: grid;
+  gap: 0.55rem;
+  align-content: start;
+  padding-block: clamp(1.75rem, 3vw, 2.5rem);
+  border-top: 1px solid var(--line);
+}
+
+.how-it-works__step:last-child {
+  border-bottom: 1px solid var(--line);
+}
+
+.how-it-works__step-title {
+  font-size: var(--step-1);
+}
+
+.how-it-works__step-text {
+  font-size: var(--step--1);
+  color: var(--text-soft);
+  line-height: 1.65;
+  max-width: 40ch;
+}
+
+@media (min-width: 56rem) {
+  .how-it-works__list {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    column-gap: clamp(2rem, 4vw, 3.5rem);
+  }
+
+  .how-it-works__step {
+    border-bottom: 1px solid var(--line);
+  }
+}
+
+.section--dark .how-it-works__step {
+  border-color: var(--line-invert);
+}
+
+.section--dark .how-it-works__step-text {
+  color: var(--text-invert-soft);
+}
+
+/* ---------- 21.2 Tira de confianza ---------- */
+
+.trust-bar {
+  display: grid;
+  gap: clamp(1.5rem, 3vw, 2.5rem);
+}
+
+.trust-bar__head {
+  display: grid;
+  gap: 0.8rem;
+  max-width: 62ch;
+}
+
+.trust-bar__title {
+  font-size: var(--step-2);
+}
+
+.trust-bar__list {
+  list-style: none;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--line);
+}
+
+.trust-bar__item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.85rem;
+  align-items: start;
+  padding-block: 1.15rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.trust-bar__icon {
+  width: 1.35rem;
+  height: 1.35rem;
+  margin-top: 0.15rem;
+  color: var(--accent-strong);
+}
+
+.trust-bar__text {
+  font-size: var(--step--1);
+  color: var(--text-soft);
+  line-height: 1.6;
+}
+
+@media (min-width: 34rem) {
+  .trust-bar__list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: clamp(1.5rem, 3vw, 2.5rem);
+  }
+}
+
+@media (min-width: 64rem) {
+  .trust-bar__list {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.section--dark .trust-bar__list {
+  border-color: var(--line-invert);
+}
+
+.section--dark .trust-bar__item {
+  border-color: var(--line-invert);
+}
+
+.section--dark .trust-bar__icon {
+  color: var(--straw);
+}
+
+.section--dark .trust-bar__text {
+  color: var(--text-invert-soft);
+}
+
+/* ---------- 21.3 Objeciones ---------- */
+
+.objections {
+  display: grid;
+  gap: clamp(2rem, 4vw, 3rem);
+}
+
+.objections__head {
+  display: grid;
+  gap: 0.8rem;
+  max-width: 62ch;
+}
+
+.objections__title {
+  font-size: var(--step-3);
+}
+
+.objections__list {
+  display: grid;
+  gap: 0;
+  margin: 0;
+  border-top: 1px solid var(--line);
+}
+
+.objections__row {
+  display: grid;
+  gap: 0.4rem;
+  padding-block: clamp(1.25rem, 2.5vw, 1.75rem);
+  border-bottom: 1px solid var(--line);
+}
+
+.objections__question {
+  font-family: var(--font-display);
+  font-size: var(--step-1);
+  font-weight: 400;
+  line-height: 1.25;
+}
+
+.objections__answer {
+  font-size: var(--step--1);
+  color: var(--text-soft);
+  line-height: 1.65;
+  max-width: 62ch;
+}
+
+@media (min-width: 48rem) {
+  .objections__row {
+    grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+    gap: clamp(1.5rem, 2.5vw, 2.5rem);
+    align-items: baseline;
+  }
+}
+
+.section--dark .objections__list {
+  border-color: var(--line-invert);
+}
+
+.section--dark .objections__row {
+  border-color: var(--line-invert);
+}
+
+.section--dark .objections__question {
+  color: var(--cream);
+}
+
+.section--dark .objections__answer {
+  color: var(--text-invert-soft);
+}
+
+/* ---------- 21.4 CTA de sección ---------- */
+
+.section-cta {
+  padding-block: clamp(2.5rem, 5vw, 4rem);
+}
+
+.section-cta__inner {
+  display: grid;
+  gap: clamp(1.25rem, 3vw, 2.5rem);
+  align-items: center;
+}
+
+@media (min-width: 60rem) {
+  .section-cta__inner {
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr);
+  }
+}
+
+.section-cta__title {
+  font-size: var(--step-3);
+}
+
+.section-cta__lead {
+  margin-top: 0.7rem;
+  max-width: 46ch;
+  color: var(--text-soft);
+}
+
+.section-cta__actions {
+  display: grid;
+  gap: 0.9rem;
+  justify-items: start;
+}
+
+.section-cta__microcopy {
+  font-size: var(--step--1);
+  color: var(--text-soft);
+  max-width: 40ch;
+}
+
+/* Superficie oscura: los botones por defecto (tinta sobre tinta) no se ven. */
+.section-cta--dark {
+  color: var(--cream);
+}
+
+.section-cta--dark .section-cta__lead,
+.section-cta--dark .section-cta__microcopy {
+  color: var(--text-invert-soft);
+}
+
+.section-cta--dark .btn {
+  --btn-bg: var(--cream);
+  --btn-fg: var(--ink);
+}
+
+.section-cta--dark .btn:hover {
+  --btn-bg: var(--paper);
+  --btn-fg: var(--ink);
+}
+
+.section-cta--dark .btn--ghost {
+  --btn-bg: transparent;
+  --btn-fg: var(--cream);
+  border-color: var(--line-invert);
+}
+
+.section-cta--dark .btn--ghost:hover {
+  --btn-bg: var(--cream);
+  --btn-fg: var(--ink);
+}
+
+/* ---------- 21.5 Variantes de la banda CTA ---------- */
+
+.cta-band--cream {
+  background: var(--cream);
+  color: var(--text);
+}
+
+.cta-band--sand {
+  background: var(--sand);
+  color: var(--text);
+}
+
+.cta-band--dark {
+  background: var(--ink);
+  color: var(--cream);
+}
+
+.cta-band--cream .cta-band__text,
+.cta-band--sand .cta-band__text {
+  color: var(--text-soft);
+}
+
+.cta-band--dark .cta-band__title {
+  color: var(--cream);
+}
+
+.cta-band--dark .cta-band__text {
+  color: var(--text-invert-soft);
+}
+
+.cta-band--dark .btn {
+  --btn-bg: var(--cream);
+  --btn-fg: var(--ink);
+}
+
+.cta-band--dark .btn:hover {
+  --btn-bg: var(--paper);
+  --btn-fg: var(--ink);
+}
+
+.cta-band--dark .btn--ghost {
+  --btn-bg: transparent;
+  --btn-fg: var(--cream);
+  border-color: var(--line-invert);
+}
+
+.cta-band--dark .btn--ghost:hover {
+  --btn-bg: var(--cream);
+  --btn-fg: var(--ink);
+}
+
+.cta-band__microcopy {
+  font-size: var(--step--1);
+  color: var(--ink);
+  max-width: 44ch;
+  margin-top: 0.9rem;
+}
+
+.cta-band--cream .cta-band__microcopy,
+.cta-band--sand .cta-band__microcopy {
+  color: var(--text-soft);
+}
+
+.cta-band--dark .cta-band__microcopy {
+  color: var(--text-invert-soft);
+}
+
+/* ---------- 21.6 Figura con pie que cuenta algo ---------- */
+
+.proof-figure {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.proof-figure__media {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius);
+  background: var(--sand);
+}
+
+.proof-figure__media img {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.proof-figure--tall .proof-figure__media {
+  aspect-ratio: 3 / 4;
+}
+
+.proof-figure--tall .proof-figure__media img {
+  height: 100%;
+  object-fit: cover;
+}
+
+.proof-figure--wide .proof-figure__media {
+  aspect-ratio: 16 / 9;
+}
+
+.proof-figure--wide .proof-figure__media img {
+  height: 100%;
+  object-fit: cover;
+}
+
+.proof-figure__caption {
+  display: grid;
+  gap: 0.2rem;
+  font-size: var(--step--1);
+  color: var(--text-soft);
+  padding-left: 0.9rem;
+  border-left: 2px solid var(--accent);
+  max-width: 58ch;
+}
+
+.proof-figure__caption-title {
+  font-family: var(--font-display);
+  font-size: var(--step-0);
+  font-weight: 400;
+  color: var(--text);
+}
+
+.section--dark .proof-figure__caption {
+  color: var(--text-invert-soft);
+}
+
+.section--dark .proof-figure__caption-title {
+  color: var(--cream);
+}
+
+/* ---------- 21.7 Barra flotante de móvil ---------- */
+
+.sticky-cta {
+  display: none;
+  position: fixed;
+  inset: auto 0 0 0;
+  z-index: 60;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  background: var(--ink);
+  border-top: 1px solid var(--line-invert);
+}
+
+.sticky-cta__item {
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 0.3rem;
+  padding: 0.7rem 0.5rem calc(0.7rem + env(safe-area-inset-bottom, 0px));
+  background: var(--ink);
+  color: var(--cream);
+  text-decoration: none;
+  border-right: 1px solid var(--line-invert);
+}
+
+.sticky-cta__item:last-child {
+  border-right: 0;
+}
+
+.sticky-cta__item:hover {
+  background: var(--ink-2);
+  text-decoration: none;
+}
+
+.sticky-cta__icon {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+/* El único acento cálido del sitio, reservado a la acción principal. */
+.sticky-cta__item--primary {
+  background: var(--straw);
+  color: var(--ink);
+}
+
+.sticky-cta__item--primary:hover {
+  background: var(--sand);
+}
+
+.sticky-cta__label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  line-height: 1.2;
+  text-align: center;
+}
+
+.sticky-cta :focus-visible {
+  outline: 2px solid var(--straw);
+  outline-offset: -3px;
+}
+
+.sticky-cta__item--primary:focus-visible {
+  outline-color: var(--ink);
+}
+
+@media (max-width: 47.99rem) {
+  .sticky-cta {
+    display: grid;
+  }
+
+  /* Reserva de espacio: la barra no puede tapar el contenido ni el pie.
+     La misma altura (4.25rem) que ocupa la barra. */
+  body.has-sticky-cta,
+  body:has(.sticky-cta) {
+    padding-bottom: 4.25rem;
+  }
+}
+
+/* ---------- 21.8 Formulario: paso 2 y microcopy ---------- */
+
+.form__more {
+  border-top: 1px solid var(--line);
+}
+
+.form__more-summary {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding-block: 0.95rem;
+  cursor: pointer;
+  list-style: none;
+  font-size: var(--step--1);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--accent-strong);
+}
+
+.form__more-summary::-webkit-details-marker {
+  display: none;
+}
+
+.form__more-icon {
+  position: relative;
+  flex: none;
+  width: 0.8rem;
+  height: 0.8rem;
+}
+
+.form__more-icon::before,
+.form__more-icon::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  background: currentColor;
+  transform: translate(-50%, -50%);
+  transition: opacity 0.2s ease;
+}
+
+.form__more-icon::before {
+  width: 0.8rem;
+  height: 1px;
+}
+
+.form__more-icon::after {
+  width: 1px;
+  height: 0.8rem;
+}
+
+.form__more[open] .form__more-icon::after {
+  opacity: 0;
+}
+
+.form__more-body {
+  display: grid;
+  gap: 1.15rem;
+  padding-bottom: 0.5rem;
+}
+
+.form__more-intro {
+  font-size: var(--step--1);
+  color: var(--text-soft);
+  max-width: 58ch;
+}
+
+.form__microcopy {
+  display: grid;
+  gap: 0.25rem;
+  font-size: var(--step--1);
+  color: var(--text-soft);
+  max-width: 56ch;
+}
+
+.form__microcopy-lead {
+  font-weight: 600;
+  color: var(--text);
+}
+
+.form__noscript {
+  display: grid;
+  gap: 0.5rem;
+  justify-items: start;
+  padding-top: 1.1rem;
+  border-top: 1px solid var(--line);
+}
+
+.form__noscript-hint {
+  font-size: var(--step--1);
+  color: var(--text-soft);
+  max-width: 52ch;
+}
+
+.section--dark .card .form__more,
+.section--dark .card .form__noscript {
+  border-color: var(--line);
+}
+
+.section--dark .card .form__more-summary {
+  color: var(--accent-strong);
+}
+
+.section--dark .card .form__more-intro,
+.section--dark .card .form__noscript-hint {
+  color: var(--text-soft);
+}
+
+.section--dark .card .form__microcopy {
+  color: var(--text-soft);
+}
+
+.section--dark .card .form__microcopy-lead {
+  color: var(--text);
+}
+
+/* ---------- 22. Movimiento: reparto de responsabilidades ---------- */
+/*
+ * Con GSAP + ScrollTrigger en juego, el movimiento se reparte así:
+ *
+ *   • CSS  → el barrido de luz sobre la veta del hero. Es independiente del
+ *            scroll y no toca transformaciones que GSAP controle.
+ *   • GSAP → revelado de titulares palabra a palabra, entrada de bloques,
+ *            hero cinematográfico con scrub, galería horizontal anclada,
+ *            parallax de fotos y cursor. Todo en `src/scripts/motion.ts`.
+ *
+ * Si el JS no llega, la página se ve completa: nada se oculta desde el HTML.
+ */
+@keyframes grain-sweep {
+  from {
+    transform: translate3d(-17%, -21%, 0);
+  }
+  to {
+    transform: translate3d(17%, 21%, 0);
+  }
+}
+
+/* Respiración de la foto: 1 → 1.035 en 34 s. Con el recorte `cover` sobra
+   imagen por los cuatro lados, así que el zoom no descubre bordes y el
+   movimiento se percibe como si la cámara estuviera viva. */
+@keyframes hero-breathe {
+  from {
+    transform: scale(1);
+  }
+  to {
+    transform: scale(1.035);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .hero__track {
+    animation: hero-drift var(--hero-drift) linear infinite;
+  }
+
+  .hero__media img {
+    animation: hero-breathe 34s cubic-bezier(0.37, 0, 0.63, 1) infinite alternate;
+  }
+
+  .hero__grain-band {
+    animation: grain-sweep 15s cubic-bezier(0.4, 0, 0.6, 1) infinite alternate;
+  }
+}
+
+/* El efecto de luz es decorativo y sigue siendo caro en pantallas muy
+   pequeñas: allí la foto ya ocupa el ancho completo y el barrido se lee
+   como un parpadeo. */
+@media (max-width: 47.99rem) {
+  .hero__grain {
+    opacity: 0.55;
+  }
+}
+
+/* Sin animación no hay barrido: la banda se quedaría quieta en medio del
+   hero como un manchón. Se retira la capa entera. */
+@media (prefers-reduced-motion: reduce) {
+  .hero__grain {
+    display: none;
+  }
+}
+
+/* ---------- 23. Ajustes tipográficos de la nueva pareja ---------- */
+/* Fraunces a tamaño de titular necesita un pelo de tracking negativo; a
+   tamaño de cuerpo (la frase de la definición) no. Archivo, con su
+   x-height grande, agradece un interlineado ligeramente mayor en prosa. */
+h1,
+h2 {
+  letter-spacing: -0.012em;
+}
+
+.stats__value,
+.service__name {
+  letter-spacing: -0.01em;
+}
+
+.prose p,
+.lede {
+  line-height: 1.66;
+}
+
+/* ---------- 24. Lenguaje visual de la referencia (home) ---------- */
+/*
+ * Se acercan seis gestos de la referencia: titular en mayúsculas, rejilla de
+ * cuatro, bloque oscuro con filas de icono, franja de tres columnas, franja
+ * de realizaciones y CTA centrada. El contenido es el nuestro: no se añade
+ * ni un dato nuevo.
+ */
+
+/* — Hero: titular en mayúsculas y CTA secundaria como enlace — */
+.hero__title {
+  text-transform: uppercase;
+  letter-spacing: 0.002em;
+  line-height: 0.98;
+}
+
+.hero__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem 1.75rem;
+}
+
+.hero__link {
+  color: var(--cream);
+  font-size: var(--step--1);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.hero__link:hover {
+  color: var(--straw);
+}
+
+/* — 02 · Bloque oscuro «Materiał» — */
+.material__grid {
+  display: grid;
+  gap: clamp(2rem, 4vw, 3.5rem);
+}
+
+@media (min-width: 62rem) {
+  .material__grid {
+    grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.08fr);
+    align-items: start;
+  }
+}
+
+.material__figure {
+  margin: 0;
+  aspect-ratio: 4 / 5;
+  overflow: hidden;
+  border-radius: var(--radius);
+  background: var(--ink-2);
+}
+
+.material__figure img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.material__lead {
+  font-family: var(--font-display);
+  font-size: var(--step-1);
+  line-height: 1.5;
+  color: #e4dac9;
+  max-width: 46ch;
+}
+
+.material__rows {
+  list-style: none;
+  padding: 0;
+  margin-top: clamp(1.5rem, 3vw, 2.25rem);
+  display: grid;
+}
+
+.material__row {
+  display: grid;
+  grid-template-columns: 2.75rem minmax(0, 1fr);
+  gap: 1rem;
+  padding-block: 1.05rem;
+  border-top: 1px solid var(--line-invert);
+}
+
+.material__row:last-child {
+  border-bottom: 1px solid var(--line-invert);
+}
+
+.material__icon {
+  display: grid;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border: 1px solid var(--line-invert);
+  border-radius: 50%;
+  color: var(--straw);
+}
+
+.material__icon .icon {
+  width: 1.2rem;
+  height: 1.2rem;
+}
+
+.material__row-title {
+  font-family: var(--font-sans);
+  font-size: var(--step-0);
+  font-weight: 700;
+  color: var(--cream);
+}
+
+.material__row-text {
+  margin-top: 0.2rem;
+  font-size: var(--step--1);
+  line-height: 1.6;
+  color: var(--text-invert-soft);
+  max-width: 46ch;
+}
+
+.material__specs {
+  margin-top: 1.5rem;
+}
+
+/* — 03 · Franja de tres columnas — */
+.craft__grid {
+  display: grid;
+  gap: clamp(0.75rem, 1.5vw, 1.25rem);
+}
+
+@media (min-width: 62rem) {
+  .craft__grid {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.14fr) minmax(0, 1fr);
+    align-items: stretch;
+  }
+}
+
+.craft__figure {
+  margin: 0;
+  overflow: hidden;
+  border-radius: var(--radius);
+  background: var(--sand);
+  min-height: 20rem;
+}
+
+.craft__figure img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.craft__body {
+  background: var(--paper);
+  border-radius: var(--radius);
+  padding: clamp(1.5rem, 3vw, 2.5rem);
+}
+
+.craft__body .section-head {
+  margin-bottom: 1.25rem;
+}
+
+/* — 07 · Franja de realizaciones — */
+.strip__head {
+  display: grid;
+  gap: 1rem;
+  margin-bottom: clamp(1.5rem, 3vw, 2.25rem);
+}
+
+@media (min-width: 62rem) {
+  .strip__head {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: end;
+  }
+}
+
+.strip__head .section-head {
+  margin-bottom: 0;
+}
+
+.strip__link {
+  margin: 0;
+}
+
+.strip {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  gap: clamp(0.75rem, 1.5vw, 1.25rem);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+@media (min-width: 62rem) {
+  .strip {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.strip__figure {
+  margin: 0;
+  aspect-ratio: 4 / 5;
+  overflow: hidden;
+  border-radius: var(--radius);
+  background: var(--sand);
+}
+
+.strip__figure img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.6s cubic-bezier(0.2, 0.6, 0.2, 1);
+}
+
+.strip__item:hover img {
+  transform: scale(1.035);
+}
+
+.strip__caption {
+  margin-top: 0.6rem;
+  font-size: var(--step--1);
+  color: var(--text-soft);
+}
+
+/* — CTA centrada (variante de la banda) — */
+@media (min-width: 60rem) {
+  .cta-band--center .cta-band__inner {
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: center;
+    text-align: center;
+    gap: clamp(1.5rem, 3vw, 2rem);
+  }
+
+  .cta-band--center .cta-band__text {
+    margin-inline: auto;
+  }
+}
+
+.cta-band--center .cta-band__actions {
+  display: grid;
+  justify-items: center;
+  gap: 0.75rem;
+}
+
+.cta-band--center .btn-row {
+  justify-content: center;
+}
+
+/* ---------- 25. Piezas del sistema de movimiento (GSAP) ---------- */
+
+/* Palabra envuelta para el revelado de titulares: la máscara evita que la
+   letra se vea «flotando» durante la animación. */
+.anim-word {
+  display: inline-block;
+  overflow: hidden;
+  vertical-align: top;
+  padding-bottom: 0.06em;
+  margin-bottom: -0.06em;
+}
+
+.anim-word__inner {
+  display: inline-block;
+  will-change: transform, opacity;
+}
+
+/* Cursor propio: un punto que se agranda sobre lo interactivo. Sólo puntero
+   fino; en táctil no existe. `difference` lo hace visible sobre claro y oscuro. */
+.cursor {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 10px;
+  height: 10px;
+  margin: -5px 0 0 -5px;
+  border-radius: 50%;
+  background: var(--cream);
+  mix-blend-mode: difference;
+  pointer-events: none;
+  z-index: 200;
+  opacity: 0;
+  transition:
+    width 0.25s ease,
+    height 0.25s ease,
+    margin 0.25s ease,
+    opacity 0.25s ease;
+}
+
+.cursor.is-visible {
+  opacity: 1;
+}
+
+.cursor.is-active {
+  width: 38px;
+  height: 38px;
+  margin: -19px 0 0 -19px;
+}
+
+@media (pointer: coarse) {
+  .cursor {
+    display: none;
+  }
+}
+
+/* Textura de grano: una capa fija con ruido SVG. Muy baja opacidad, no
+   captura clics y queda por debajo de la cabecera y de la barra móvil. */
+.grain {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  opacity: 0.055;
+  mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 180px 180px;
+}
+
+/* ---------- 26. Galería horizontal anclada ---------- */
+
+.hscroll {
+  overflow: hidden;
+}
+
+.hscroll__viewport {
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  padding-block: 0.5rem;
+}
+
+.hscroll__viewport::-webkit-scrollbar {
+  display: none;
+}
+
+@media (min-width: 62rem) {
+  .hscroll__viewport {
+    overflow: hidden;
+  }
+}
+
+.hscroll__track {
+  display: flex;
+  gap: clamp(0.75rem, 1.5vw, 1.25rem);
+  list-style: none;
+  margin: 0;
+  padding: 0 max(1rem, calc((100vw - 1240px) / 2));
+  width: max-content;
+  scroll-snap-type: x mandatory;
+}
+
+.hscroll__item {
+  flex: 0 0 auto;
+  width: clamp(15rem, 62vw, 22rem);
+  scroll-snap-align: start;
+}
+
+@media (min-width: 62rem) {
+  /* La sección se fija a pantalla completa: el alto de la foto depende del
+     alto del viewport para que cabecera, título y galería entren juntos. */
+  .hscroll {
+    padding-block: clamp(2.5rem, 6vh, 4.5rem) clamp(1.5rem, 3vh, 2rem);
+  }
+
+  .hscroll__item {
+    width: min(21rem, 42vh);
+  }
+}
+
+.hscroll__figure {
+  margin: 0;
+  aspect-ratio: 4 / 5;
+  overflow: hidden;
+  border-radius: var(--radius);
+  background: var(--sand);
+}
+
+.hscroll__figure img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  scale: 1.09;
+}
+
+.hscroll__caption {
+  margin-top: 0.6rem;
+  font-size: var(--step--1);
+  color: var(--text-soft);
+}
+
+/* — Servicios con foto (dos de stock y una del cliente, provisional) — */
+.service__figure {
+  margin: 0 0 1rem;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  border-radius: var(--radius);
+  background: var(--sand);
+}
+
+.service__figure img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.6s cubic-bezier(0.2, 0.6, 0.2, 1);
+}
+
+.service:hover .service__figure img {
+  transform: scale(1.03);
+}

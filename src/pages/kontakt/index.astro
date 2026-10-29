@@ -1,0 +1,24 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import ContactView from '../../views/ContactView.astro';
+import { contact } from '../../content/contact';
+
+const locale = 'pl' as const;
+const path = '/kontakt/';
+
+const alternates = {
+  pl: '/kontakt/',
+  en: '/en/contact/',
+  de: '/de/kontakt/',
+} as Partial<Record<typeof locale, string>>;
+---
+
+<BaseLayout
+  locale={locale}
+  path={path}
+  title={contact.seo.title[locale]}
+  description={contact.seo.description[locale]}
+  alternates={alternates}
+>
+  <ContactView locale={locale} />
+</BaseLayout>

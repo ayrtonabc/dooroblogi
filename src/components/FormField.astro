@@ -1,0 +1,95 @@
+---
+import type { FunnelField } from '../content/funnel';
+import type { Locale } from '../i18n';
+
+/**
+ * Jedno pole formularza.
+ *
+ * Osobny komponent, bo pole pojawia się w dwóch miejscach: w zestawie
+ * głównym embudu i w zwiniętym bloku pól dodatkowych. Druga kopia
+ * znacznika jest zawsze jednym krokiem od rozsynchronizowania się z
+ * pierwszą — a rozsynchronizowany formularz to cichy błąd.
+ *
+ * Dwa atrybuty wymagane, bo wymagane znaczy dwa różne rzeczy:
+ *   • `data-required` — kontrakt ze skryptem (walidacja własna, komunikaty
+ *     pod polami w języku strony);
+ *   • `required` — walidacja przeglądarki. Ustawiana tylko wtedy, gdy w
+ *     formularzu jest JEDEN zestaw pól: przy dwóch zestawach ukryty
+ *     (nieaktywny) zestaw blokowałby wysyłkę przez przeglądarkę.
+ */
+interface Props {
+  field: FunnelField;
+  locale: Locale;
+  formId: string;
+  /** Wymuszenie walidacji przeglądarki (jeden zestaw pól). */
+  nativeRequired?: boolean;
+}
+
+const { field, locale, formId, nativeRequired = false } = Astro.props;
+const controlId = `${formId}-${field.name}`;
+---
+
+<div class="field" data-field={field.name}>
+  <label class="field__label" for={controlId}>
+    {field.label[locale]}
+    {field.required && <span class="req" aria-hidden="true">*</span>}
+  </label>
+
+  {
+    field.type === 'number' && (
+      <input
+        class="field__control"
+        id={controlId}
+        name={field.name}
+        type="number"
+        inputmode={field.inputMode}
+        min={field.min}
+        step={field.step}
+        placeholder={field.placeholder?.[locale]}
+        required={nativeRequired && field.required ? true : undefined}
+        data-required={field.required ? 'true' : undefined}
+        aria-describedby={`${controlId}-error`}
+      />
+    )
+  }
+
+  {
+    field.type === 'text' && (
+      <input
+        class="field__control"
+        id={controlId}
+        name={field.name}
+        type="text"
+        placeholder={field.placeholder?.[locale]}
+        required={nativeRequired && field.required ? true : undefined}
+        data-required={field.required ? 'true' : undefined}
+        aria-describedby={`${controlId}-error`}
+      />
+    )
+  }
+
+  {
+    field.type === 'select' && (
+      <select
+        class="field__control"
+        id={controlId}
+        name={field.name}
+        required={nativeRequired && field.required ? true : undefined}
+        data-required={field.required ? 'true' : undefined}
+        aria-describedby={`${controlId}-error`}
+      >
+        {field.options?.map((option) => (
+          <option value={option.value}>{option.label[locale]}</option>
+        ))}
+      </select>
+    )
+  }
+
+  {field.hint && <p class="field__hint">{field.hint[locale]}</p>}
+  <p
+    class="field__error"
+    id={`${controlId}-error`}
+    data-error-for={controlId}
+    aria-live="polite"
+  />
+</div>

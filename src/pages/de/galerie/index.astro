@@ -1,0 +1,23 @@
+---
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import GalleryView from '../../../views/GalleryView.astro';
+
+const locale = 'de' as const;
+const path = '/de/galerie/';
+
+const alternates = {
+  pl: '/realizacje/',
+  en: '/en/gallery/',
+  de: '/de/galerie/',
+} as Partial<Record<typeof locale, string>>;
+---
+
+<BaseLayout
+  locale={locale}
+  path={path}
+  title="Galerie — Projekte mit Eichenleisten"
+  description="Fotos von Eichen-Abschlussleisten, Lamellen und Paneelen: Ausbau-Projekte, SEDO-Deckenpaneele und geräucherte Eiche aus unserer Werkstatt."
+  alternates={alternates}
+>
+  <GalleryView locale={locale} />
+</BaseLayout>

@@ -1,0 +1,302 @@
+---
+import { Image } from 'astro:assets';
+import CtaBand from '../components/CtaBand.astro';
+import Breadcrumbs from '../components/Breadcrumbs.astro';
+import { image } from '../content/images';
+import { gallery } from '../content/pages';
+import { company, whatsappUrl } from '../content/company';
+import { pathFor, quoteHref, type Locale } from '../i18n';
+import { t } from '../i18n/ui';
+
+interface Props {
+  locale: Locale;
+}
+
+const { locale } = Astro.props;
+
+/**
+ * Fotos de la galería. `wide` ocupa la fila entera; `ratio` sirve para las
+ * imágenes que NO se pueden recortar (ver `.gallery-grid__item--natural`).
+ */
+interface GalleryPhoto {
+  src: string;
+  alt: Record<Locale, string>;
+  caption: Record<Locale, string>;
+  wide?: boolean;
+  ratio?: string;
+  /** Banda a lo ancho (una fila entera). Para fotos con rótulos impresos. */
+  full?: boolean;
+}
+
+const photos: GalleryPhoto[] = [
+  {
+    src: 'hero-oblog-debowy.jpg',
+    alt: {
+      pl: 'Obłóg dębowy z naturalnym krawędziem na stosie desek',
+      en: 'An oak trim batten with a natural edge resting on a stack of boards',
+      de: 'Eine Eichen-Abschlussleiste mit Naturkante auf einem Stapel Bretter',
+    },
+    caption: {
+      pl: 'Obłóg z naturalną krawędzią',
+      en: 'Trim batten with a natural edge',
+      de: 'Abschlussleiste mit Naturkante',
+    },
+    wide: true,
+  },
+  {
+    src: 'sedo-warianty.png',
+    alt: {
+      pl: 'Dwa warianty paneli sufitowych SEDO: bez sęków i z sękami',
+      en: 'Two SEDO ceiling panel variants: knot-free and with knots',
+      de: 'Zwei Varianten von SEDO-Deckenpaneelen: ohne Äste und mit Ästen',
+    },
+    caption: {
+      pl: 'Panele SEDO z naszego dębu',
+      en: 'SEDO panels from our oak',
+      de: 'SEDO-Paneele aus unserer Eiche',
+    },
+    // Banda a lo ancho con su proporción real: el gráfico lleva rótulos
+    // impresos («Bez nud» / «Z nudami») y recortado a 3/4 los perdía.
+    ratio: '3 / 2',
+    full: true,
+  },
+  {
+    src: 'sufit-sedo-realny.jpg',
+    alt: {
+      pl: 'Sufit z paneli dębowych z wpuszczonymi punktami świetlnymi',
+      en: 'Oak panel ceiling with recessed spotlights',
+      de: 'Eichenpaneel-Decke mit eingelassenen Spots',
+    },
+    caption: {
+      pl: 'Sufit z paneli dębowych',
+      en: 'Oak panel ceiling',
+      de: 'Decke aus Eichenpaneelen',
+    },
+  },
+  {
+    src: 'oblog-w-hali.jpg',
+    alt: {
+      pl: 'Obłogi dębowe ułożone w hali — widać przekrój i profil wykończenia',
+      en: 'Oak trim battens stacked in the workshop — the cross-section and the finish profile are visible',
+      de: 'Eichen-Abschlussleisten in der Halle gestapelt — Querschnitt und Abschlussprofil sichtbar',
+    },
+    caption: {
+      pl: 'Obłogi w hali',
+      en: 'Battens in the workshop',
+      de: 'Leisten in der Halle',
+    },
+  },
+  {
+    src: 'pomiar-oblogu.jpg',
+    alt: {
+      pl: 'Deska dębowa z taśmą mierniczą na stanowisku w hali',
+      en: 'An oak board with a measuring tape on the workshop bench',
+      de: 'Ein Eichenbrett mit Maßband auf der Werkbank',
+    },
+    caption: {
+      pl: 'Pomiar na wymiar',
+      en: 'Cut to measure',
+      de: 'Auf Maß zugeschnitten',
+    },
+    wide: false,
+  },
+  {
+    src: 'deski-na-placu.jpg',
+    alt: {
+      pl: 'Deski dębowe ułożone na placu, ze świerkami w tle',
+      en: 'Oak boards stacked in the yard, with fir trees in the background',
+      de: 'Eichenbretter auf dem Hof gestapelt, im Hintergrund Tannen',
+    },
+    caption: {
+      pl: 'Drewno na placu',
+      en: 'Timber in the yard',
+      de: 'Holz auf dem Hof',
+    },
+  },
+  {
+    src: 'oblog-na-desce.jpg',
+    alt: {
+      pl: 'Obłóg dębowy cięty położony na drewnianym tarasie',
+      en: 'A cut oak trim batten resting on a wooden deck',
+      de: 'Eine geschnittene Eichen-Abschlussleiste auf einem Holzhof',
+    },
+    caption: {
+      pl: 'Obłóg cięty',
+      en: 'Cut trim batten',
+      de: 'Geschnittene Abschlussleiste',
+    },
+    wide: false,
+  },
+  {
+    src: 'profil-oblogu.jpg',
+    alt: {
+      pl: 'Przekrój obłogu dębowego z widocznym profilem wykończenia',
+      en: 'Cross-section of an oak trim batten showing the finish profile',
+      de: 'Querschnitt einer Eichen-Abschlussleiste mit sichtbarem Abschlussprofil',
+    },
+    caption: {
+      pl: 'Profil wykończenia',
+      en: 'Finish profile',
+      de: 'Abschlussprofil',
+    },
+    wide: false,
+  },
+  {
+    src: 'oblog-w-scianie.jpg',
+    alt: {
+      pl: 'Obłóg dębowy zamontowany pionowo na drewnianej ścianie',
+      en: 'An oak trim batten mounted vertically on a wooden wall',
+      de: 'Eine vertikal montierte Eichen-Abschlussleiste an einer Holzwand',
+    },
+    caption: {
+      pl: 'Obłóg w ścianie',
+      en: 'Trim batten in a wall',
+      de: 'Abschlussleiste in der Wand',
+    },
+    wide: false,
+  },
+  {
+    src: 'deska-debowa-naturalna.jpg',
+    alt: {
+      pl: 'Naturalne deski dębowe z widocznym układem sęków',
+      en: 'Natural oak boards with a visible knot pattern',
+      de: 'Natürliche Eichenbretter mit sichtbarem Astmuster',
+    },
+    caption: {
+      pl: 'Dąb naturalny',
+      en: 'Natural oak',
+      de: 'Natürliche Eiche',
+    },
+    wide: false,
+  },
+  {
+    src: 'dab-z-sakami.jpg',
+    alt: {
+      pl: 'Zbliżenie na dąb z sękami',
+      en: 'Close-up of oak with knots',
+      de: 'Nahaufnahme von Eiche mit Ästen',
+    },
+    caption: {
+      pl: 'Dąb z sękami',
+      en: 'Oak with knots',
+      de: 'Eiche mit Ästen',
+    },
+    wide: false,
+  },
+  {
+    src: 'panele-scienne-dab.jpg',
+    alt: {
+      pl: 'Ściana wykończona poziomymi deskami dębowymi',
+      en: 'A wall finished with horizontal oak boards',
+      de: 'Eine Wand mit waagerechten Eichenbrettern',
+    },
+    caption: {
+      pl: 'Panele ścienne',
+      en: 'Wall panels',
+      de: 'Wandpaneele',
+    },
+    wide: false,
+  },
+  {
+    src: 'oblog-wedzony.jpg',
+    alt: {
+      pl: 'Wędzony obłóg dębowy — ciemne deski w pracowni',
+      en: 'Smoked oak trim battens — dark boards in the workshop',
+      de: 'Geräucherte Eichen-Abschlussleisten — dunkle Bretter in der Werkstatt',
+    },
+    caption: {
+      pl: 'Dąb wędzony',
+      en: 'Smoked oak',
+      de: 'Geräucherte Eiche',
+    },
+    wide: false,
+  },
+  {
+    src: 'deski-z-sakami.jpg',
+    alt: {
+      pl: 'Dwie deski dębowe z sękami w naturalnej selekcji',
+      en: 'Two oak boards with knots in the natural selection',
+      de: 'Zwei Eichenbretter mit Ästen in natürlicher Selektion',
+    },
+    caption: {
+      pl: 'Deski z sękami',
+      en: 'Boards with knots',
+      de: 'Bretter mit Ästen',
+    },
+  },
+];
+
+const breadcrumbs = [
+  { label: t(locale, 'nav.home'), href: pathFor(locale, 'home') },
+  { label: t(locale, 'nav.projects') },
+];
+
+const waText = t(locale, 'wa.quote');
+---
+
+<Breadcrumbs items={breadcrumbs} locale={locale} />
+
+<section class="section section--paper page-head">
+  <div class="container">
+    <div class="page-head__inner">
+      <p class="kicker">{gallery.kicker[locale]}</p>
+      <h1 class="page-head__title">{gallery.title[locale]}</h1>
+      <p class="lede">{gallery.lead[locale]}</p>
+    </div>
+  </div>
+</section>
+
+<section class="section section--tight section--cream">
+  <div class="container">
+    <div class="prose">
+      {gallery.body[locale].map((paragraph) => <p>{paragraph}</p>)}
+    </div>
+  </div>
+</section>
+
+<section class="section section--tight section--paper">
+  <div class="container">
+    <div class="gallery-grid gallery-grid--page">
+      {
+        photos.map((photo) => (
+          <figure
+            class:list={[
+              'gallery-grid__item',
+              photo.wide && 'gallery-grid__item--wide',
+              photo.ratio && 'gallery-grid__item--natural',
+              photo.full && 'gallery-grid__item--full',
+            ]}
+            style={photo.ratio ? `--tile-ratio: ${photo.ratio}` : undefined}
+          >
+            <Image
+              src={image(photo.src)}
+              alt={photo.alt[locale]}
+              widths={[400, 640, 960, 1280]}
+              sizes={
+                photo.full
+                  ? '(min-width: 54rem) 92vw, 92vw'
+                  : photo.wide
+                    ? '(min-width: 54rem) 62vw, 92vw'
+                    : '(min-width: 54rem) 31vw, 45vw'
+              }
+              loading="lazy"
+              decoding="async"
+            />
+            <figcaption class="gallery-grid__caption">{photo.caption[locale]}</figcaption>
+          </figure>
+        ))
+      }
+    </div>
+  </div>
+</section>
+
+<CtaBand
+  title={t(locale, 'gallery.ctaTitle')}
+  text={t(locale, 'gallery.ctaText')}
+  primaryLabel={t(locale, 'cta.quote')}
+  primaryHref={quoteHref(locale)}
+  secondaryLabel={t(locale, 'cta.call')}
+  secondaryHref={`tel:${company.phoneE164}`}
+  whatsappLabel={t(locale, 'form.whatsapp')}
+  whatsappHref={whatsappUrl(waText)}
+/>

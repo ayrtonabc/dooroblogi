@@ -1,0 +1,16 @@
+User-agent: *
+Allow: /
+
+# Reguły techniczne — wyjęte celowo.
+#
+# `Disallow: /_astro/` byłoby szkodliwe: to pliki CSS i JS, których Google
+# potrzebuje do wyrenderowania strony. Zablokowanie ich zamienia normalny
+# indeks w pusty. W buildzie statycznym nie ma też endpointu `/_image`
+# (usługa sharp działa tylko w `astro dev`), więc reguła nie blokowała
+# niczego.
+#
+# Strona 404 jest serwowana jako /404.html i ma w sobie `noindex`, więc
+# Google ją indeksuje jako 404, a nie jako wynik — dlatego nie blokujemy
+# jej tutaj: lepiej, żeby robot ją zobaczył i przeczytał `noindex`.
+
+Sitemap: https://doors-oblogi.pl/sitemap-index.xml

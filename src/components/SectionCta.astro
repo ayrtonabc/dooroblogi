@@ -1,0 +1,95 @@
+---
+/**
+ * CTA de sección — título corto con beneficio, CTA primario + secundario y
+ * microcopy honesto. Es la pieza que cierra el embudo dentro de una sección,
+ * donde la banda completa (`CtaBand.astro`) sería demasiado.
+ *
+ * Samowystarczalny: por defecto lee título, acciones y microcopy de
+ * `src/content/funnel.ts` según la página (`page`); cualquier prop puede
+ * sobrescribirse.
+ *
+ * Użycie:
+ *   <SectionCta locale={locale} page="product" variant="cream" />
+ */
+import {
+  actionHref,
+  funnelPages,
+  pick,
+  type FunnelPageKey,
+  type FunnelText,
+} from '../content/funnel';
+import type { Locale } from '../i18n';
+
+interface Props {
+  locale: Locale;
+  /** Página del embudo — de aquí salen título, acciones y microcopy. */
+  page?: FunnelPageKey;
+  /**
+   * Superficie. `cream` y `sand` son claras, `dark` es oscura.
+   * El color lo pone la sección que envuelve al componente.
+   */
+  variant?: 'cream' | 'sand' | 'dark' | 'paper';
+  /** Sobrescribe el título. */
+  title?: string | FunnelText;
+  /** Sobrescribe la frase de apoyo. */
+  text?: string | FunnelText;
+  /** Sobrescribe el microcopy bajo el botón. */
+  microcopy?: string | FunnelText;
+  /** Sobrescribe la etiqueta del CTA primario. */
+  primaryLabel?: string | FunnelText;
+  /** Sobrescribe el destino del CTA primario. */
+  primaryHref?: string;
+  /** Sobrescribe la etiqueta del CTA secundario. */
+  secondaryLabel?: string | FunnelText;
+  /** Sobrescribe el destino del CTA secundario. */
+  secondaryHref?: string;
+  /** Muestra u oculta el CTA secundario. */
+  showSecondary?: boolean;
+}
+
+const {
+  locale,
+  page = 'home',
+  variant = 'cream',
+  title,
+  text,
+  microcopy,
+  primaryLabel,
+  primaryHref,
+  secondaryLabel,
+  secondaryHref,
+  showSecondary = true,
+} = Astro.props;
+
+const source = funnelPages[page];
+
+const heading = pick(title ?? source.title, locale);
+const lede = pick(text ?? source.text, locale);
+const note = pick(microcopy ?? source.microcopy, locale);
+const primaryText = pick(primaryLabel ?? source.primary.label, locale);
+const primaryUrl = primaryHref ?? actionHref(locale, source.primary);
+const secondaryText = pick(secondaryLabel ?? source.secondary.label, locale);
+const secondaryUrl = secondaryHref ?? actionHref(locale, source.secondary);
+---
+
+<div class:list={['section-cta', `section-cta--${variant}`]}>
+  <div class="section-cta__inner">
+    <div class="section-cta__text">
+      <h2 class="section-cta__title">{heading}</h2>
+      <p class="section-cta__lead">{lede}</p>
+    </div>
+    <div class="section-cta__actions">
+      <div class="btn-row">
+        <a class="btn" href={primaryUrl}>{primaryText}</a>
+        {
+          showSecondary && (
+            <a class="btn btn--ghost" href={secondaryUrl}>
+              {secondaryText}
+            </a>
+          )
+        }
+      </div>
+      {note && <p class="section-cta__microcopy">{note}</p>}
+    </div>
+  </div>
+</div>

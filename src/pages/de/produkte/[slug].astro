@@ -1,0 +1,37 @@
+---
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import ProductView from '../../../views/ProductView.astro';
+import { products } from '../../../content/products';
+import { productPath } from '../../../i18n';
+
+const locale = 'de' as const;
+
+export function getStaticPaths() {
+  return products.map((product) => ({
+    params: { slug: product.slug.de },
+    props: { product },
+  }));
+}
+
+const { product } = Astro.props;
+
+const alternates = {
+  pl: productPath('pl', product.slug.pl),
+  en: productPath('en', product.slug.en),
+  de: productPath('de', product.slug.de),
+};
+
+const path = productPath(locale, product.slug.de);
+---
+
+<BaseLayout
+  locale={locale}
+  path={path}
+  title={product.seoTitle.de}
+  description={product.seoDescription.de}
+  alternates={alternates}
+  ogImage={`/og/${product.id}-de.jpg`}
+  ogImageAlt={product.image.alt.de}
+>
+  <ProductView locale={locale} product={product} />
+</BaseLayout>

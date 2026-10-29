@@ -1,0 +1,75 @@
+---
+import Breadcrumbs from '../components/Breadcrumbs.astro';
+import SectionHead from '../components/SectionHead.astro';
+import TermsTable from '../components/TermsTable.astro';
+import CtaBand from '../components/CtaBand.astro';
+import { company, whatsappUrl } from '../content/company';
+import { delivery } from '../content/pages';
+import { pathFor, quoteHref, type Locale } from '../i18n';
+import { t } from '../i18n/ui';
+
+interface Props {
+  locale: Locale;
+}
+
+const { locale } = Astro.props;
+
+const breadcrumbs = [
+  { label: t(locale, 'nav.home'), href: pathFor(locale, 'home') },
+  { label: t(locale, 'nav.delivery') },
+];
+
+const waText = t(locale, 'wa.delivery');
+---
+
+<Breadcrumbs items={breadcrumbs} locale={locale} />
+
+<section class="section section--paper page-head">
+  <div class="container">
+    <div class="page-head__inner">
+      <p class="kicker">{delivery.kicker[locale]}</p>
+      <h1 class="page-head__title">{delivery.title[locale]}</h1>
+      <p class="lede">{delivery.lead[locale]}</p>
+    </div>
+  </div>
+</section>
+
+<section class="section section--tight section--sand">
+  <div class="container">
+    <div class="prose">
+      {delivery.body[locale].map((paragraph) => <p>{paragraph}</p>)}
+    </div>
+    <div class="contact-list" style="margin-top:2rem;">
+      <div class="contact-item">
+        <span class="contact-item__label">{t(locale, 'delivery.shippingInPoland')}</span>
+        <span class="contact-item__value">{company.shippingNote[locale]}</span>
+      </div>
+      <div class="contact-item">
+        <span class="contact-item__label">{t(locale, 'delivery.outsidePoland')}</span>
+        <span class="contact-item__value">{company.shippingOutside[locale]}</span>
+      </div>
+    </div>
+    <p class="mt-lg">
+      <a class="link-arrow" href={pathFor(locale, 'privacy')}>
+        {t(locale, 'footer.cookies')}
+      </a>
+    </p>
+  </div>
+</section>
+
+<section class="section section--cream">
+  <div class="container">
+    <TermsTable locale={locale} />
+  </div>
+</section>
+
+<CtaBand
+  title={t(locale, 'delivery.ctaTitle')}
+  text={t(locale, 'delivery.ctaText')}
+  primaryLabel={t(locale, 'cta.quote')}
+  primaryHref={quoteHref(locale)}
+  secondaryLabel={t(locale, 'cta.call')}
+  secondaryHref={`tel:${company.phoneE164}`}
+  whatsappLabel={t(locale, 'form.whatsapp')}
+  whatsappHref={whatsappUrl(waText)}
+/>

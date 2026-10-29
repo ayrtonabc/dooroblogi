@@ -1,0 +1,23 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import AboutView from '../../views/AboutView.astro';
+
+const locale = 'pl' as const;
+const path = '/o-nas/';
+
+const alternates = {
+  pl: '/o-nas/',
+  en: '/en/about/',
+  de: '/de/ueber-uns/',
+} as Partial<Record<typeof locale, string>>;
+---
+
+<BaseLayout
+  locale={locale}
+  path={path}
+  title="Pracownia obłogów dębowych pod Olsztynem"
+  description="Doors Obłogi to pracownia obróbki naturalnego dębu w Słoneczniku k. Olsztyna. Robimy listwy wykończeniowe, lamele i gotowe panele."
+  alternates={alternates}
+>
+  <AboutView locale={locale} />
+</BaseLayout>

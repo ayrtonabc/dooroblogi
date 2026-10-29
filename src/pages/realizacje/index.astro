@@ -1,0 +1,23 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import GalleryView from '../../views/GalleryView.astro';
+
+const locale = 'pl' as const;
+const path = '/realizacje/';
+
+const alternates = {
+  pl: '/realizacje/',
+  en: '/en/gallery/',
+  de: '/de/galerie/',
+} as Partial<Record<typeof locale, string>>;
+---
+
+<BaseLayout
+  locale={locale}
+  path={path}
+  title="Realizacje z obłogów dębowych"
+  description="Zdjęcia obłogów dębowych, lameli i paneli: realizacje z zabudowy, panele sufitowe SEDO i dąb wędzony. Wszystko z naszej pracowni."
+  alternates={alternates}
+>
+  <GalleryView locale={locale} />
+</BaseLayout>

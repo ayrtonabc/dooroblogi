@@ -1,0 +1,23 @@
+---
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import QuoteView from '../../../views/QuoteView.astro';
+
+const locale = 'de' as const;
+const path = '/de/preisliste/';
+
+const alternates = {
+  pl: '/cennik/',
+  en: '/en/price-list/',
+  de: '/de/preisliste/',
+} as Partial<Record<typeof locale, string>>;
+---
+
+<BaseLayout
+  locale={locale}
+  path={path}
+  title="Preisliste — Eichen-Abschlussleisten"
+  description="Der Preis für Eichen-Abschlussleisten hängt von Profil und Menge ab, deshalb steht er nicht auf der Website. Anfrage senden — Preis je Meter und Lieferzeit."
+  alternates={alternates}
+>
+  <QuoteView locale={locale} />
+</BaseLayout>

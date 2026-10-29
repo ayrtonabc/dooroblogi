@@ -1,0 +1,23 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import DeliveryView from '../../views/DeliveryView.astro';
+
+const locale = 'pl' as const;
+const path = '/dostawa/';
+
+const alternates = {
+  pl: '/dostawa/',
+  en: '/en/delivery/',
+  de: '/de/lieferung/',
+} as Partial<Record<typeof locale, string>>;
+---
+
+<BaseLayout
+  locale={locale}
+  path={path}
+  title="Dostawa i płatności — obłogi dębowe"
+  description="Obłogi dębowe kurierem w całej Polsce, opakowanie pod zamówienie, termin realizacji w wycenie. Dostawa poza Polską — wycena indywidualnie."
+  alternates={alternates}
+>
+  <DeliveryView locale={locale} />
+</BaseLayout>

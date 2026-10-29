@@ -1,0 +1,283 @@
+---
+import { company, phoneDisplay } from '../content/company';
+import { sortedProducts } from '../content/products';
+import BrandLogo from './BrandLogo.astro';
+import Flag from './Flag.astro';
+import Icon from './Icon.astro';
+import { localeInfo, locales, pathFor, productPath, quoteHref, type Locale } from '../i18n';
+import { t } from '../i18n/ui';
+
+interface Props {
+  locale: Locale;
+  path: string;
+  alternates: Partial<Record<Locale, string>>;
+}
+
+const { locale, path, alternates } = Astro.props;
+
+/**
+ * Nawigacja główna — w kolejności decyzji klienta:
+ * co produkujemy → dla kogo hurtowo → nasze realizacje → kim jesteśmy →
+ * ile to kosztuje → kontakt.
+ *
+ * „Dla firm" było w stopce, ale nie w pasku: to strona B2B (wycena całej
+ * partii), a nie podstrona kontaktu. Teraz jest o krok od reszty.
+ *
+ * W pasku działają ETYKIETY KRÓTKIE (`nav.*Short`): sześć pozycji plus
+ * flagi, telefon i przycisk muszą zmieścić się w 1240 px. W niemieckiej
+ * etykieta długa wypychała przycisk „Angebot anfordern" poza ekran. W menu
+ * mobilnym jest miejsce, więc tam zostają etykiety pełne.
+ */
+const navItems = [
+  { key: 'catalog' as const, label: t(locale, 'nav.products'), short: t(locale, 'nav.products') },
+  { key: 'trade' as const, label: t(locale, 'nav.trade'), short: t(locale, 'nav.tradeShort') },
+  { key: 'gallery' as const, label: t(locale, 'nav.projects'), short: t(locale, 'nav.projects') },
+  { key: 'about' as const, label: t(locale, 'nav.about'), short: t(locale, 'nav.about') },
+  {
+    key: 'quote' as const,
+    label: t(locale, 'nav.priceList'),
+    short: t(locale, 'nav.priceListShort'),
+  },
+  { key: 'contact' as const, label: t(locale, 'nav.contact'), short: t(locale, 'nav.contact') },
+];
+
+const isCurrent = (href: string) => path === href || (href !== '/' && path.startsWith(href));
+
+/**
+ * Karta produktu, na której jesteśmy. Jeśli jesteśmy na karcie, znacznik
+ * „aria-current" ma być na niej — a nie równocześnie na „Produkty".
+ */
+const currentProduct = sortedProducts.find(
+  (product) => productPath(locale, product.slug[locale]) === path,
+);
+
+const navCurrent = (key: (typeof navItems)[number]['key']) => {
+  if (key === 'catalog' && currentProduct) return false;
+  return isCurrent(pathFor(locale, key));
+};
+
+const menuLabel = t(locale, 'nav.menu');
+const closeLabel = t(locale, 'nav.close');
+
+/**
+ * Skrypt menu mobilnego na dole pliku jest `is:inline`, czyli wklejany
+ * dosłownie, bez transpilacji — musi być czystym JavaScriptem. Wcześniej
+ * używał `define:vars`, który również wkleja kod w dosłownym zapisie:
+ * generyczne typy TypeScript (`querySelector<HTMLButtonElement>`) stawały się
+ * błędem składni i wyłączały cały skrypt na każdej stronie — menu nie
+ * otwierało się nigdzie. Etykiety przychodzą teraz z atrybutów
+ * `data-label-open` / `data-label-close` na przycisku.
+ */
+---
+
+<header class="site-header">
+  <div class="container site-header__bar">
+    <a class="brand" href={pathFor(locale, 'home')}>
+      <BrandLogo locale={locale} />
+    </a>
+
+    <nav class="nav" aria-label={t(locale, 'nav.menu')}>
+      <ul class="nav__list">
+        {
+          navItems.map((item) => (
+            <li class:list={['nav__item', item.key === 'catalog' && 'nav__item--menu']}>
+              <a
+                class="nav__link"
+                href={pathFor(locale, item.key)}
+                aria-current={navCurrent(item.key) ? 'page' : undefined}
+              >
+                {item.short}
+                {item.key === 'catalog' && <Icon name="chevron" class="nav__chevron" />}
+              </a>
+
+              {/*
+                Lista produktów pod „Produkty". Otwiera się sama po najechaniu
+                albo po wejściu klawiszem (`:focus-within`) — bez JavaScriptu,
+                bez martwego przycisku i bez zmiany linku, więc strona działa
+                tak samo, gdy skrypt nie cargó.
+              */}
+              {item.key === 'catalog' && (
+                <div class="nav__panel">
+                  <ul class="nav__panel-list">
+                    {sortedProducts.map((product) => {
+                      const href = productPath(locale, product.slug[locale]);
+                      return (
+                        <li>
+                          <a
+                            class="nav__panel-link"
+                            href={href}
+                            aria-current={href === path ? 'page' : undefined}
+                          >
+                            {product.name[locale]}
+                          </a>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                  <a class="nav__panel-all" href={pathFor(locale, 'catalog')}>
+                    {t(locale, 'nav.allProducts')}
+                  </a>
+                </div>
+              )}
+            </li>
+          ))
+        }
+      </ul>
+    </nav>
+
+    <div class="header__actions">
+      <div class="lang" role="group" aria-label={t(locale, 'footer.language')}>
+        {
+          locales.map((l) => {
+            const href = alternates[l] ?? pathFor(l, 'home');
+            return (
+              <a
+                class="lang__item"
+                href={href}
+                hreflang={localeInfo[l].htmlLang}
+                lang={localeInfo[l].htmlLang}
+                aria-current={l === locale ? 'true' : undefined}
+                title={localeInfo[l].name}
+              >
+                <Flag code={l} class="lang__flag" />
+                <span class="lang__code">{l.toUpperCase()}</span>
+                <span class="visually-hidden">{localeInfo[l].name}</span>
+              </a>
+            );
+          })
+        }
+      </div>
+
+      <a class="header__phone" href={`tel:${company.phoneE164}`}>
+        <span class="visually-hidden">{t(locale, 'cta.call')}</span>
+        {phoneDisplay(locale)}
+      </a>
+
+      <a class="btn header__cta" href={quoteHref(locale)}>{t(locale, 'cta.quote')}</a>
+
+      <button
+        class="nav-toggle"
+        type="button"
+        aria-expanded="false"
+        aria-controls="mobile-nav"
+        data-nav-toggle
+        data-label-open={menuLabel}
+        data-label-close={closeLabel}
+      >
+        <span class="nav-toggle__bars" aria-hidden="true">
+          <span></span><span></span><span></span>
+        </span>
+        <span data-nav-label>{t(locale, 'nav.menu')}</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="mobile-nav" id="mobile-nav" data-mobile-nav aria-hidden="true">
+    <div class="container">
+      <ul class="mobile-nav__list">
+        {
+          navItems.map((item) => (
+            <li>
+              <a
+                class="mobile-nav__link"
+                href={pathFor(locale, item.key)}
+                aria-current={navCurrent(item.key) ? 'page' : undefined}
+              >
+                {item.label}
+              </a>
+
+              {/* Produkty pod „Produkty" — na telefonie nie ma hovera, więc
+                  dostęp do karty produktu musi być w menu, a nie w pasku. */}
+              {item.key === 'catalog' && (
+                <ul class="mobile-nav__sub">
+                  {sortedProducts.map((product) => {
+                    const href = productPath(locale, product.slug[locale]);
+                    return (
+                      <li>
+                        <a
+                          class="mobile-nav__sub-link"
+                          href={href}
+                          aria-current={href === path ? 'page' : undefined}
+                        >
+                          {product.name[locale]}
+                        </a>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </li>
+          ))
+        }
+      </ul>
+
+      {/*
+        Idiomas en el menú. En la barra solo hay banderas, sin nombres: en el
+        teléfono no hay hover, así que no se sabe cuál es cuál. Aquí van
+        con nombre.
+      */}
+      <div class="mobile-nav__lang">
+        <span class="mobile-nav__lang-label">{t(locale, 'footer.language')}</span>
+        <ul class="lang lang--list">
+          {
+            locales.map((l) => {
+              const href = alternates[l] ?? pathFor(l, 'home');
+              return (
+                <li>
+                  <a
+                    class="lang__item"
+                    href={href}
+                    hreflang={localeInfo[l].htmlLang}
+                    lang={localeInfo[l].htmlLang}
+                    aria-current={l === locale ? 'true' : undefined}
+                  >
+                    <Flag code={l} class="lang__flag" />
+                    <span class="lang__name">{localeInfo[l].name}</span>
+                  </a>
+                </li>
+              );
+            })
+          }
+        </ul>
+      </div>
+
+      <div class="mobile-nav__cta">
+        <a class="btn" href={quoteHref(locale)}>{t(locale, 'cta.quote')}</a>
+        <a class="btn btn--ghost" href={`tel:${company.phoneE164}`}>{t(locale, 'cta.call')}</a>
+      </div>
+    </div>
+  </div>
+</header>
+
+<script is:inline>  const toggle = document.querySelector('[data-nav-toggle]');
+  const panel = document.querySelector('[data-mobile-nav]');
+  const label = toggle && toggle.querySelector('[data-nav-label]');
+
+  if (toggle && panel) {
+    const openLabel = toggle.getAttribute('data-label-open') || '';
+    const closeLabel = toggle.getAttribute('data-label-close') || '';
+
+    const setState = (open) => {
+      toggle.setAttribute('aria-expanded', String(open));
+      toggle.setAttribute('aria-label', open ? closeLabel : openLabel);
+      if (label) label.textContent = open ? closeLabel : openLabel;
+      panel.setAttribute('data-open', String(open));
+      panel.setAttribute('aria-hidden', String(!open));
+    };
+
+    setState(false);
+
+    toggle.addEventListener('click', () => {
+      setState(toggle.getAttribute('aria-expanded') !== 'true');
+    });
+
+    panel.addEventListener('click', (event) => {
+      const target = event.target;
+      if (target && target.closest && target.closest('a')) setState(false);
+    });
+
+    window.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') setState(false);
+    });
+  }
+</script>

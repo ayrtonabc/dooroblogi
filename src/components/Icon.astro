@@ -1,0 +1,171 @@
+---
+/**
+ * Ikony SVG inline — bez biblioteki zewnętrznej, bez sprite'a.
+ *
+ * Ścisła kreska (1.5 px), zaokrąglone końce, `currentColor`. Trasy w siatce
+ * 24×24. Ikony są dekoracyjne: tekst obok niesie sens, więc `aria-hidden`.
+ *
+ * Użycie: <Icon name="truck" />
+ */
+interface Props {
+  /** Nazwa ikony: 'oak' | 'ruler' | 'truck' | 'pin' | 'camera' | 'workshop' | 'handshake' | 'document' | 'person' | 'mail' | 'paperclip' | 'phone' | 'chat' | 'stack' | 'leaf' | 'house' | 'panel' | 'door' | 'arrow' | 'smoke' | 'calendar' | 'tag'. */
+  name: string;
+  class?: string;
+}
+
+const { name, class: className } = Astro.props;
+
+const paths: Record<string, string> = {
+  // Dąb naturalny — korona drzewa, pień i ziemia.
+  oak: `
+    <path d="M12 3.2c-1.1 0-2 .6-2.4 1.4-.9-.3-1.9.1-2.4.9-.5.8-.3 1.8.3 2.4-.8.4-1.3 1.2-1.3 2.1 0 1.2.9 2.2 2.1 2.3.2 1.1 1.1 1.9 2.2 1.9h2.8c1.1 0 2-.8 2.2-1.9 1.2-.1 2.1-1.1 2.1-2.3 0-.9-.5-1.7-1.3-2.1.6-.6.8-1.6.3-2.4-.5-.8-1.5-1.2-2.4-.9C14 3.8 13.1 3.2 12 3.2Z" />
+    <path d="M12 14.2v6.3" />
+    <path d="M9.8 20.5h4.4" />
+  `,
+  // Cięcie na wymiar — linijka z podziałką.
+  ruler: `
+    <rect x="2.5" y="8" width="19" height="8" rx="1" />
+    <path d="M7 8v3" />
+    <path d="M11 8v4" />
+    <path d="M15 8v3" />
+    <path d="M19 8v4" />
+  `,
+  // Wysyłka kurierem — ciężarówka.
+  truck: `
+    <path d="M2.5 7h11v9.5h-11z" />
+    <path d="M13.5 10.5h3.8l2.7 3.2v2.8h-6.5z" />
+    <circle cx="6.5" cy="18" r="1.8" />
+    <circle cx="16.5" cy="18" r="1.8" />
+    <path d="M8.3 18h6.4" />
+  `,
+  // Lokalizacja — pinezka.
+  pin: `
+    <path d="M12 21s7-5.6 7-11a7 7 0 1 0-14 0c0 5.4 7 11 7 11Z" />
+    <circle cx="12" cy="10" r="2.6" />
+  `,
+  // Zdjęcia z realizacji — aparat.
+  camera: `
+    <path d="M3 8.5h3.2l1.6-2.2h8.4l1.6 2.2H21v10.5H3z" />
+    <circle cx="12" cy="13.6" r="3.4" />
+  `,
+  // Własna produkcja — hala z dachem piłą.
+  workshop: `
+    <path d="M2.5 20.5h19" />
+    <path d="M4 20.5V9.5l5 3.2V9.5l5 3.2V9.5l5 3.2v7.8" />
+    <path d="M18 9.5V4h2.5v5.5" />
+  `,
+  // Współpraca — dwa połączone ogniwa.
+  handshake: `
+    <path d="M9.6 14.4 14.4 9.6" />
+    <path d="M11 7.6 12.8 5.8a3.4 3.4 0 0 1 4.8 4.8l-1.8 1.8" />
+    <path d="M13 16.4 11.2 18.2a3.4 3.4 0 0 1-4.8-4.8l1.8-1.8" />
+  `,
+  // Selekcje drewna — warstwy desek.
+  stack: `
+    <path d="M12 3.5 21 8l-9 4.5L3 8z" />
+    <path d="m3 12.5 9 4.5 9-4.5" />
+    <path d="m3 16.5 9 4.5 9-4.5" />
+  `,
+  // Dokument — wycena partii (oferta na całą partię).
+  document: `
+    <path d="M6 3.5h7.5L18 8v12.5H6z" />
+    <path d="M13.5 3.5V8H18" />
+    <path d="M9 12h6" />
+    <path d="M9 15.5h6" />
+    <path d="M9 8.5h2" />
+  `,
+  // Osoba — kontakt handlowy.
+  person: `
+    <circle cx="12" cy="8" r="3.6" />
+    <path d="M5 20.5c0-3.6 3.1-6 7-6s7 2.4 7 6" />
+  `,
+  // Koperta — e-mail.
+  mail: `
+    <rect x="3" y="5.5" width="18" height="13" rx="1.5" />
+    <path d="m3.6 7 8.4 6 8.4-6" />
+  `,
+  // Tick — marca de la opción elegida.
+  check: `
+    <path d="m5 12.5 4.5 4.5L19 7" />
+  `,
+  // Spinacz — załącznik w formularzu.
+  paperclip: `
+    <path d="M20 11.5 12.2 19.3a5 5 0 0 1-7.1-7.1L13.6 3.7a3.4 3.4 0 0 1 4.8 4.8l-8.2 8.2a1.8 1.8 0 0 1-2.5-2.5l7.5-7.5" />
+  `,
+  // Telefon — słuchawka.
+  phone: `
+    <path d="M5.2 3.8h3.3l1.5 4-2 1.4a11.5 11.5 0 0 0 5.6 5.6l1.4-2 4 1.5v3.3a1.6 1.6 0 0 1-1.7 1.6A15.6 15.6 0 0 1 3.6 5.5a1.6 1.6 0 0 1 1.6-1.7Z" />
+  `,
+  // WhatsApp — rozmowa.
+  chat: `
+    <path d="M20.5 12.2c0 3.9-3.8 7-8.5 7-1 0-2-.15-2.9-.4L4 20.5l1.6-3.7A6.6 6.6 0 0 1 3.5 12.2c0-3.9 3.8-7 8.5-7s8.5 3.1 8.5 7Z" />
+  `,
+  // Chevron w dół — znak, że pozycja ma rozwijane menu.
+  chevron: `
+    <path d="m6.5 9.5 5.5 5.5 5.5-5.5" />
+  `,
+  // Liść — drewno naturalne, bez farbowania.
+  leaf: `
+    <path d="M4.6 19.4c6.4-.6 11.1-4.2 13.8-10.8-6.6-1.1-11.3 1.6-13.8 10.8Z" />
+    <path d="M4.6 19.4 14.8 9.2" />
+  `,
+  // Dom — sufity.
+  house: `
+    <path d="M3.5 10.6 12 3.6l8.5 7" />
+    <path d="M6 9.6V20h12V9.6" />
+  `,
+  // Ściana z pionowymi panelami.
+  panel: `
+    <path d="M4.5 4.5h15v15h-15z" />
+    <path d="M9.5 4.5v15" />
+    <path d="M14.5 4.5v15" />
+  `,
+  // Drzwi — obłóg w ramie.
+  door: `
+    <path d="M6.5 3.5h11v17h-11z" />
+    <path d="M14.2 12h1.6" />
+  `,
+  // Flecha a la derecha — acción en los botones.
+  arrow: `
+    <path d="M4 12h15" />
+    <path d="m13 6 6 6-6 6" />
+  `,
+  // Dym — wędzenie drewna.
+  smoke: `
+    <path d="M4.5 8.5c1.6-1.6 3.2-1.6 4.8 0s3.2 1.6 4.8 0 3.2-1.6 4.4 0" />
+    <path d="M4.5 13c1.6-1.6 3.2-1.6 4.8 0s3.2 1.6 4.8 0 3.2-1.6 4.4 0" />
+    <path d="M4.5 17.5c1.6-1.6 3.2-1.6 4.8 0s3.2 1.6 4.8 0 3.2-1.6 4.4 0" />
+  `,
+  // Kalendarz — termin realizacji.
+  calendar: `
+    <rect x="3.5" y="5.5" width="17" height="15" rx="1.5" />
+    <path d="M3.5 10h17" />
+    <path d="M8 3.5v4" />
+    <path d="M16 3.5v4" />
+  `,
+  // Etiqueta de precio — precio unitario.
+  tag: `
+    <path d="M11.6 3.5H20a.5.5 0 0 1 .5.5v8.4a1.5 1.5 0 0 1-.4 1l-7.6 7.6a1.5 1.5 0 0 1-2.1 0l-7.9-7.9a1.5 1.5 0 0 1 0-2.1l7.6-7.6a1.5 1.5 0 0 1 1-.4Z" />
+    <circle cx="16.3" cy="7.7" r="1.4" />
+  `,
+};
+
+const body = paths[name];
+---
+
+{
+  body && (
+    <svg
+      class:list={['icon', className]}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="1.5"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      aria-hidden="true"
+      focusable="false"
+      set:html={body}
+    />
+  )
+}

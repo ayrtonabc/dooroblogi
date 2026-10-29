@@ -1,0 +1,329 @@
+---
+import { Image, getImage } from 'astro:assets';
+import Breadcrumbs from '../components/Breadcrumbs.astro';
+import SectionHead from '../components/SectionHead.astro';
+import ProductCard from '../components/ProductCard.astro';
+import CtaBand from '../components/CtaBand.astro';
+import QuoteForm from '../components/QuoteForm.astro';
+import FaqList from '../components/FaqList.astro';
+import PriceInfo from '../components/PriceInfo.astro';
+import Icon from '../components/Icon.astro';
+import { image } from '../content/images';
+import { sortedProducts, type Product } from '../content/products';
+import { productSchema } from '../content/schema';
+import { orderSummary } from '../content/terms';
+import { company, whatsappUrl } from '../content/company';
+import { pathFor, productPath, quoteHref, type Locale } from '../i18n';
+import { t, tf } from '../i18n/ui';
+
+interface Props {
+  locale: Locale;
+  product: Product;
+}
+
+const { locale, product } = Astro.props;
+
+const related = sortedProducts.filter((p) => p.id !== product.id).slice(0, 3);
+
+const breadcrumbs = [
+  { label: t(locale, 'nav.home'), href: pathFor(locale, 'home') },
+  {
+    label: t(locale, 'nav.products'),
+    href: pathFor(locale, 'catalog'),
+  },
+  { label: product.name[locale] },
+];
+
+const site = Astro.site ?? new URL('https://doors-oblogi.pl');
+const productUrl = new URL(productPath(locale, product.slug[locale]), site).href;
+
+/** Bezwzględny URL zdjęcia produktu — wymagany przez schema.org Product. */
+const mainImage = await getImage({
+  src: image(product.image.src),
+  width: 1200,
+  format: 'webp',
+});
+const imageUrl = new URL(mainImage.src, site).href;
+
+const productLd = productSchema(product, locale, imageUrl, productUrl);
+
+const waText = tf(locale, 'wa.product', { product: product.name[locale] });
+
+/**
+ * Emudo formularza zależy od produktu: panele mierzymy w m², obłogi
+ * i lamele w metrach bieżących. Nie pytamy klienta o to, co właśnie czyta
+ * na karcie produktu.
+ */
+const formVariant = product.id === 'panele-dabowe' ? 'A' : 'B';
+
+/**
+ * Fotos en rejilla (sin la banda a lo ancho). La paridad de la rejilla la
+ * decide el número de fichas, no el de fotos: una banda ocupa una fila
+ * entera y no cuenta como ficha.
+ */
+const galleryTiles = product.gallery.filter((photo) => !photo.full);
+---
+
+<script type="application/ld+json" set:html={JSON.stringify(productLd)} is:inline />
+
+<Breadcrumbs items={breadcrumbs} locale={locale} />
+
+<section class="section section--paper">
+  <div class="container">
+    <div class="split">
+      <div>
+        <p class="kicker">{t(locale, 'product.kicker')}</p>
+        <h1 class="page-head__title" style="margin-block:.75rem 1rem;">{product.name[locale]}</h1>
+        <p class="lede">{product.summary[locale]}</p>
+
+        <div class="prose" style="margin-top:2rem;">
+          {product.body[locale].map((paragraph) => <p>{paragraph}</p>)}
+        </div>
+
+        <p class="mt-lg">
+          <a
+            class="btn"
+            href={quoteHref(locale, `?produkt=${encodeURIComponent(product.id)}`)}
+          >
+            {product.ctaLabel[locale]}
+          </a>
+        </p>
+      </div>
+
+      <figure class="figure figure--tall">
+        <Image
+          src={image(product.image.src)}
+          alt={product.image.alt[locale]}
+          widths={[480, 720, 960, 1200]}
+          sizes="(min-width: 60rem) 48vw, 92vw"
+          loading="eager"
+          fetchpriority="high"
+          decoding="async"
+        />
+      </figure>
+    </div>
+  </div>
+</section>
+
+<!--
+  LOS DATOS DEL PRODUCTO — tres franjas con la anatomía del bloque SEDO de
+  la home (rótulo, titular, entradilla, los datos uno a uno con icono, el
+  cierre y la salida):
+
+    01 · «Co dostajesz» — los datos del material, en puntos con icono.
+    02 · «Dlaczego» — los tres motivos, en fila y con filete entre columnas.
+    03 · «Cena y pedido» — el precio a la izquierda, lo que confirmamos en la
+         oferta a la derecha, y el cierre con la acción.
+
+  Antes era una rejilla 2×2 con dos tablas dentro: cuatro bloques densos en
+  paralelo, imposibles de escanear. Los datos del material (wilgotność,
+  gęstość, tolerancje) se confirman en la oferta; la tabla completa sigue en
+  /dostawa/ y /kontakt/.
+-->
+<section class="section section--cream pf-band pf-band--specs">
+  <div class="container">
+    <div class="pf-band__head">
+      <p class="kicker">{t(locale, 'product.specsKicker')}</p>
+      <h2 class="pf-band__title">{t(locale, 'product.specsTitle')}</h2>
+      <p class="pf-band__lead">{product.specsLead[locale]}</p>
+    </div>
+
+    <dl class="pf-specs">
+      {
+        product.specs.map((spec) => (
+          <div class="pf-specs__item">
+            <Icon name={spec.icon} class="pf-specs__icon" />
+            <dt class="pf-specs__label">{spec.label[locale]}</dt>
+            <dd class="pf-specs__value">{spec.value[locale]}</dd>
+          </div>
+        ))
+      }
+    </dl>
+
+    <div class="pf-band__close">
+      <p class="pf-band__close-text">{t(locale, 'product.specsClose')}</p>
+      <div class="btn-row">
+        <a class="btn" href="#quote-form">
+          {product.ctaLabel[locale]}
+          <Icon name="arrow" class="btn__icon" />
+        </a>
+        <a class="btn btn--ghost" href="#gallery">
+          {t(locale, 'product.photosLink')}
+          <Icon name="arrow" class="btn__icon" />
+        </a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section section--paper pf-band pf-band--why">
+  <div class="container">
+    <div class="pf-band__head">
+      <p class="kicker">{t(locale, 'product.whyKicker')}</p>
+      <h2 class="pf-band__title">{t(locale, 'product.whyTitle')}</h2>
+    </div>
+
+    <ul class="pf-why">
+      {
+        product.highlights.map((highlight) => (
+          <li class="pf-why__item">
+            <Icon name={highlight.icon} class="pf-why__icon" />
+            <h3 class="pf-why__title">{highlight.title[locale]}</h3>
+            <p class="pf-why__text">{highlight.text[locale]}</p>
+          </li>
+        ))
+      }
+    </ul>
+
+    <div class="pf-band__close">
+      <p class="pf-band__close-text">{t(locale, 'product.whyClose')}</p>
+    </div>
+  </div>
+</section>
+
+<section class="section section--cream pf-band pf-band--price">
+  <div class="container">
+    <div class="pf-cols">
+      <div class="pf-col">
+        <p class="kicker">{t(locale, 'product.priceKicker')}</p>
+        <h2 class="pf-col__title">{t(locale, 'product.priceTitle')}</h2>
+        <PriceInfo locale={locale} productId={product.id} />
+      </div>
+
+      <div class="pf-col">
+        <p class="kicker">{orderSummary.kicker[locale]}</p>
+        <h2 class="pf-col__title">{orderSummary.title[locale]}</h2>
+        <ul class="pf-list">
+          {
+            orderSummary.rows.map((row) => (
+              <li class="pf-list__item">
+                <Icon name={row.icon} class="pf-list__icon" />
+                <span class="pf-list__label">{row.label[locale]}</span>
+                <span class="pf-list__value">{row.value[locale]}</span>
+              </li>
+            ))
+          }
+        </ul>
+      </div>
+    </div>
+
+    <div class="pf-closing">
+      <h2 class="pf-closing__title">{t(locale, 'product.factsCtaTitle')}</h2>
+      <p class="pf-closing__text">{t(locale, 'product.factsCtaText')}</p>
+      <div class="btn-row">
+        <a class="btn" href="#quote-form">
+          {product.ctaLabel[locale]}
+          <Icon name="arrow" class="btn__icon" />
+        </a>
+        <a class="btn btn--ghost" href={`tel:${company.phoneE164}`}>
+          {t(locale, 'cta.call')}
+          <Icon name="arrow" class="btn__icon" />
+        </a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section section--paper" id="gallery">
+  <div class="container">
+    <SectionHead
+      kicker={t(locale, 'product.photosKicker')}
+      title={tf(locale, 'product.photosTitle', { name: product.name[locale] })}
+    />
+    <div
+      class:list={[
+        'gallery-grid',
+        galleryTiles.length === 2 && 'gallery-grid--2',
+        galleryTiles.length % 2 !== 0 && 'gallery-grid--odd',
+      ]}
+    >
+      {
+        product.gallery.map((photo) => (
+          <figure
+            class:list={[
+              'gallery-grid__item',
+              photo.ratio && 'gallery-grid__item--natural',
+              photo.full && 'gallery-grid__item--full',
+            ]}
+            style={photo.ratio ? `--tile-ratio: ${photo.ratio}` : undefined}
+          >
+            <Image
+              src={image(photo.src)}
+              alt={photo.alt[locale]}
+              widths={[400, 640, 960]}
+              sizes={
+                photo.full
+                  ? '(min-width: 54rem) 92vw, (min-width: 0) 92vw'
+                  : '(min-width: 54rem) 31vw, (min-width: 0) 45vw'
+              }
+              loading="lazy"
+              decoding="async"
+            />
+            <figcaption class="gallery-grid__caption">{photo.alt[locale]}</figcaption>
+          </figure>
+        ))
+      }
+    </div>
+  </div>
+</section>
+
+<section class="section section--cream">
+  <div class="container">
+    <SectionHead
+      kicker={t(locale, 'seo.faqKicker')}
+      title={t(locale, 'seo.faqTitle')}
+    />
+    <FaqList locale={locale} items={product.faq} />
+  </div>
+</section>
+
+<section class="section section--dark">
+  <div class="container">
+    <div class="split split--center">
+      <div>
+        <SectionHead
+          kicker={t(locale, 'product.quoteKicker')}
+          title={t(locale, 'product.quoteTitle')}
+          lede={t(locale, 'product.quoteLede')}
+        />
+      </div>
+      <div>
+        <div class="card" style="padding: clamp(1.5rem, 3vw, 2.5rem);">
+          <QuoteForm
+            locale={locale}
+            context={`product:${product.id}`}
+            preselect={product.id}
+            variant={formVariant}
+          />
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section section--paper">
+  <div class="container">
+    <SectionHead
+      kicker={t(locale, 'product.seeAlsoKicker')}
+      title={t(locale, 'product.seeAlsoTitle')}
+    />
+    <div class="grid-products grid-products--3">
+      {
+        related.map((item) => (
+          <ProductCard product={item} locale={locale} />
+        ))
+      }
+    </div>
+  </div>
+</section>
+
+<CtaBand
+  title={t(locale, 'product.ctaTitle')}
+  text={t(locale, 'product.ctaText')}
+  primaryLabel={product.ctaLabel[locale]}
+  primaryHref={quoteHref(locale, `?produkt=${encodeURIComponent(product.id)}`)}
+  secondaryLabel={t(locale, 'cta.call')}
+  secondaryHref={`tel:${company.phoneE164}`}
+  whatsappLabel={t(locale, 'form.whatsapp')}
+  whatsappHref={whatsappUrl(waText)}
+/>

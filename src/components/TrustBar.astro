@@ -1,0 +1,52 @@
+---
+/**
+ * Tira de elementos de confianza — hechos comprobables, no adjetivos.
+ *
+ * Samowystarczalny: bierze pozycje z `src/content/funnel.ts` i ikony
+ * z `src/components/Icon.astro`. `aria-hidden` na ikonie, tekst obok.
+ *
+ * Użycie:
+ *   <TrustBar locale={locale} />
+ */
+import Icon from './Icon.astro';
+import { trustItems, trustBlock, type TrustItem } from '../content/funnel';
+import type { Locale } from '../i18n';
+
+interface Props {
+  locale: Locale;
+  /** Pozycje — domyślnie pięć z `funnel.ts`. */
+  items?: TrustItem[];
+  /** Nagłówek nad paskiem. Pusty string = bez nagłówka. */
+  title?: string;
+  /** Nadtytuł. */
+  kicker?: string;
+}
+
+const {
+  locale,
+  items = trustItems,
+  title = trustBlock.title[locale],
+  kicker = trustBlock.kicker[locale],
+} = Astro.props;
+---
+
+<div class="trust-bar">
+  {
+    title && (
+      <div class="trust-bar__head">
+        <p class="kicker">{kicker}</p>
+        <h2 class="trust-bar__title">{title}</h2>
+      </div>
+    )
+  }
+  <ul class="trust-bar__list">
+    {
+      items.map((item) => (
+        <li class="trust-bar__item">
+          <Icon name={item.icon} class="trust-bar__icon" />
+          <span class="trust-bar__text">{item.text[locale]}</span>
+        </li>
+      ))
+    }
+  </ul>
+</div>

@@ -1,0 +1,164 @@
+---
+import { Image } from 'astro:assets';
+import SectionHead from '../components/SectionHead.astro';
+import CtaBand from '../components/CtaBand.astro';
+import Breadcrumbs from '../components/Breadcrumbs.astro';
+import LocationMap from '../components/LocationMap.astro';
+import { image } from '../content/images';
+import { about, media } from '../content/pages';
+import { company, phoneDisplay, whatsappUrl } from '../content/company';
+import { pathFor, quoteHref, type Locale } from '../i18n';
+import { t } from '../i18n/ui';
+
+interface Props {
+  locale: Locale;
+}
+
+const { locale } = Astro.props;
+
+const breadcrumbs = [
+  { label: t(locale, 'nav.home'), href: pathFor(locale, 'home') },
+  { label: t(locale, 'nav.about') },
+];
+
+const waText = t(locale, 'wa.quote');
+---
+
+<Breadcrumbs items={breadcrumbs} locale={locale} />
+
+<section class="section section--paper page-head">
+  <div class="container">
+    <div class="about-head">
+      <div class="page-head__inner">
+        <p class="kicker">{about.kicker[locale]}</p>
+        <h1 class="page-head__title">{about.title[locale]}</h1>
+        <p class="lede">{about.lead[locale]}</p>
+      </div>
+      <LocationMap locale={locale} />
+    </div>
+  </div>
+</section>
+
+<style>
+  .about-head {
+    display: grid;
+    gap: 1.75rem;
+    align-items: center;
+  }
+
+  @media (min-width: 60rem) {
+    .about-head {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
+      gap: clamp(1.75rem, 3.5vw, 3.5rem);
+    }
+  }
+</style>
+
+<section class="section section--tight section--sand">
+  <div class="container">
+    <div class="split split--media-first">
+      <figure class="figure figure--square">
+        <Image
+          src={image('oblog-w-hali.jpg')}
+          alt={media.about.workshopAlt[locale]}
+          widths={[480, 720, 960]}
+          sizes="(min-width: 60rem) 48vw, 92vw"
+          loading="eager"
+          fetchpriority="high"
+          decoding="async"
+        />
+      </figure>
+      <div class="prose">
+        {about.body[locale].map((paragraph) => <p>{paragraph}</p>)}
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section section--dark">
+  <div class="container">
+    <SectionHead
+      kicker={about.values.kicker[locale]}
+      title={about.values.title[locale]}
+      split
+    />
+    <div class="highlights">
+      {
+        about.values.items.map((item) => (
+          <div class="highlight">
+            <h3 class="highlight__title">{item.title[locale]}</h3>
+            <p class="highlight__text">{item.text[locale]}</p>
+          </div>
+        ))
+      }
+    </div>
+  </div>
+</section>
+
+<section class="section section--cream">
+  <div class="container">
+    <div class="split">
+      <figure class="figure figure--tall">
+        <Image
+          src={image('dab-wedzony-beczka.jpg')}
+          alt={media.about.battensAlt[locale]}
+          widths={[480, 720, 960]}
+          sizes="(min-width: 60rem) 48vw, 92vw"
+          loading="lazy"
+          decoding="async"
+        />
+        <figcaption class="figure__caption">{media.about.battensCaption[locale]}</figcaption>
+      </figure>
+      <div>
+        <SectionHead
+          kicker={t(locale, 'contact.location')}
+          title={`${company.region}, ${company.city}`}
+        />
+        <div class="contact-list">
+          <div class="contact-item">
+            <span class="contact-item__label">{t(locale, 'contact.address')}</span>
+            <span class="contact-item__value">
+              {company.region}, {company.city}, {company.voivodeship[locale]}
+            </span>
+          </div>
+          <div class="contact-item">
+            <span class="contact-item__label">{t(locale, 'contact.phone')}</span>
+            <span class="contact-item__value">
+              <a href={`tel:${company.phoneE164}`}>{phoneDisplay(locale)}</a>
+            </span>
+          </div>
+          <div class="contact-item">
+            <span class="contact-item__label">{t(locale, 'contact.person')}</span>
+            <span class="contact-item__value">{company.contactPerson}</span>
+          </div>
+          <div class="contact-item">
+            <span class="contact-item__label">{t(locale, 'contact.email')}</span>
+            <span class="contact-item__value">
+              <a href={`mailto:${company.contactEmail}`}>{company.contactEmail}</a>
+            </span>
+          </div>
+          <div class="contact-item">
+            <span class="contact-item__label">{t(locale, 'contact.delivery')}</span>
+            <span class="contact-item__value">{company.shippingNote[locale]}</span>
+          </div>
+        </div>
+        <p class="mt-lg">
+          <a class="link-arrow" href={company.mapUrl} target="_blank" rel="noopener">
+            {t(locale, 'contact.map')}
+          </a>
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<CtaBand
+  title={t(locale, 'about.ctaTitle')}
+  text={t(locale, 'about.ctaText')}
+  primaryLabel={t(locale, 'cta.quote')}
+  primaryHref={quoteHref(locale)}
+  secondaryLabel={t(locale, 'cta.call')}
+  secondaryHref={`tel:${company.phoneE164}`}
+  whatsappLabel={t(locale, 'form.whatsapp')}
+  whatsappHref={whatsappUrl(waText)}
+/>

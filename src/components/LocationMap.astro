@@ -1,0 +1,50 @@
+---
+import { media } from '../content/pages';
+
+/**
+ * Mapa Polski z flagą oznaczającą pracownię (województwo warmińsko-mazurskie).
+ * Plik klienta: `public/images/mapa.webp`. Wstawiamy go tak, jak jest —
+ * nie regenerujemy ani nie przeskalowujemy.
+ *
+ * PNG ma kanał alfa, więc wtopi się w tło sekcji bez białej ramki.
+ */
+interface Props {
+  locale: 'pl' | 'en' | 'de';
+  class?: string;
+}
+
+const { locale, class: className } = Astro.props;
+---
+
+<figure class:list={['location-map', className]}>
+  <img
+    src="/images/mapa.webp"
+    alt={media.mapAlt[locale]}
+    width="1796"
+    height="1704"
+    loading="eager"
+    decoding="async"
+  />
+</figure>
+
+<style>
+  .location-map {
+    margin: 0;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    width: 100%;
+  }
+
+  .location-map img {
+    width: 100%;
+    max-width: 38rem;
+    height: auto;
+  }
+
+  @media (max-width: 59.99rem) {
+    .location-map img {
+      max-width: 24rem;
+    }
+  }
+</style>

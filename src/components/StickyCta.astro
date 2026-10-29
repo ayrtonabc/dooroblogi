@@ -1,0 +1,73 @@
+---
+/**
+ * Barra de acción flotante — SOLO en móvil (por debajo de 48rem).
+ *
+ * Tres acciones: llamar / WhatsApp / cotizar. Es el cambio con más impacto
+ * en móvil (ESTRATEGIA §6) y no existía.
+ *
+ * DETALLES DE ACCESIBILIDAD Y DE TAPADO:
+ *   • Cada enlace lleva `aria-label` (el texto visible es corto; la etiqueta
+ *     accesible dice qué pasa al pulsar).
+ *   • `aria-hidden="true"` en escritorio: el script siguiente refleja la misma
+ *     media query que el CSS. En CSS la barra además es `display: none` por
+ *     encima de 48rem, así que fuera de móvil no existe ni para el lector de
+ *     pantalla ni para el tabulador.
+ *   • No tapa contenido: `body:has(.sticky-cta)` recibe `padding-bottom` en
+ *     móvil (ver `src/styles/global.css`), de modo que el pie de página
+ *     queda por encima de la barra.
+ *
+ * IMPORTANTE: colócala al final del layout (después del pie). La barra es
+ * `position: fixed` y siempre está pegada abajo, así que da igual dónde se
+ * inserte, pero el `padding-bottom` del `body` es lo que la impide tapar.
+ *
+ * Użycie:
+ *   <StickyCta locale={locale} />
+ */
+import Icon from './Icon.astro';
+import { actionHref, stickyActions, stickyLabel, type StickyAction } from '../content/funnel';
+import type { Locale } from '../i18n';
+
+interface Props {
+  locale: Locale;
+  /** Akcje — domyślnie trzy z `funnel.ts`. */
+  actions?: StickyAction[];
+}
+
+const { locale, actions = stickyActions } = Astro.props;
+---
+
+<nav class="sticky-cta" data-sticky-cta aria-label={stickyLabel[locale]}>
+  {
+    actions.map((item) => (
+      <a
+        class:list={['sticky-cta__item', item.primary && 'sticky-cta__item--primary']}
+        href={actionHref(locale, item.action)}
+        aria-label={item.ariaLabel[locale]}
+      >
+        <Icon name={item.icon} class="sticky-cta__icon" />
+        <span class="sticky-cta__label">{item.label[locale]}</span>
+      </a>
+    ))
+  }
+</nav>
+
+<script is:inline>
+  // `is:inline` = wklejany dosłownie, bez transpilacji — czysty JavaScript.
+  // Ustawia `aria-hidden` zgodnie z tą samą media query, którą używa CSS.
+  (function () {
+    var bars = document.querySelectorAll('[data-sticky-cta]');
+    if (!bars.length) return;
+    var query = window.matchMedia('(max-width: 47.99rem)');
+    function apply() {
+      for (var i = 0; i < bars.length; i++) {
+        bars[i].setAttribute('aria-hidden', query.matches ? 'false' : 'true');
+      }
+    }
+    apply();
+    if (typeof query.addEventListener === 'function') {
+      query.addEventListener('change', apply);
+    } else if (typeof query.addListener === 'function') {
+      query.addListener(apply);
+    }
+  })();
+</script>

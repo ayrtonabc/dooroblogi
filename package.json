@@ -1,0 +1,31 @@
+{
+  "name": "doors-oblogi",
+  "type": "module",
+  "version": "1.0.0",
+  "private": true,
+  "engines": {
+    "node": ">=22.22.0"
+  },
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "check": "astro check",
+    "og": "node _tools/gen-og.cjs",
+    "grain": "node _tools/make-grain-mask.cjs src/assets/images/hero-sufit-dab.jpg public/images/grain-hero.webp 1400",
+    "verify": "node _tools/check-meta.cjs && node _tools/verify-dist.cjs && node _tools/check-jsonld.cjs && node _tools/check-keywords.mjs && node _tools/check-html.cjs && node _tools/check-contrast.cjs && node _tools/check-assets.cjs && node _tools/check-budget.cjs",
+    "astro": "astro"
+  },
+  "dependencies": {
+    "@astrojs/sitemap": "^3.7.4",
+    "@fontsource-variable/archivo": "^5.3.0",
+    "@fontsource-variable/fraunces": "^5.3.0",
+    "astro": "^7.4.1",
+    "gsap": "^3.15.0",
+    "sharp": "^0.35.5"
+  },
+  "devDependencies": {
+    "@astrojs/check": "^0.9.12",
+    "typescript": "^6.0.3"
+  }
+}

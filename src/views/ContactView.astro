@@ -1,0 +1,199 @@
+---
+import Breadcrumbs from '../components/Breadcrumbs.astro';
+import BrandLogo from '../components/BrandLogo.astro';
+import Icon from '../components/Icon.astro';
+import QuoteForm from '../components/QuoteForm.astro';
+import FaqList from '../components/FaqList.astro';
+import SectionHead from '../components/SectionHead.astro';
+import { Image } from 'astro:assets';
+import { company, phoneDisplay, addressText, hoursText, whatsappUrl } from '../content/company';
+import { contact } from '../content/contact';
+import { image } from '../content/images';
+import { pathFor, type Locale } from '../i18n';
+import { t } from '../i18n/ui';
+
+interface Props {
+  locale: Locale;
+}
+
+const { locale } = Astro.props;
+
+const breadcrumbs = [
+  { label: t(locale, 'nav.home'), href: pathFor(locale, 'home') },
+  { label: contact.kicker[locale] },
+];
+
+/** Wiersze listy: adres, kontakt, telefon, e-mail, dostawa. */
+const detailItems = contact.contactBlock.items.map((item) => ({
+  ...item,
+  /* Godziny: klient ich nie potwierdził, więc wartość pochodzi z
+   * `company.hoursText()` — strona nie publikuje godzin oszacowanych. */
+  note: item.note ?? hoursText(locale),
+}));
+---
+
+<Breadcrumbs items={breadcrumbs} locale={locale} />
+
+<!--
+  01 · HERO — texto a la izquierda, foto al centro y el pie de foto en una
+  columna estrecha a la derecha, como en la maqueta del cliente.
+-->
+<section class="section section--cream contact-hero">
+  <div class="container">
+    <div class="contact-hero__grid">
+      <div class="contact-hero__body">
+        <p class="kicker">{contact.kicker[locale]}</p>
+        <h1 class="contact-hero__title">{contact.title[locale]}</h1>
+        <p class="contact-hero__lead">{contact.lead[locale]}</p>
+      </div>
+
+      <figure class="contact-hero__figure">
+        <Image
+          src={image(contact.heroPhoto.src)}
+          alt={contact.heroPhoto.alt[locale]}
+          widths={[480, 720, 960, 1200]}
+          sizes="(min-width: 62rem) 34vw, 92vw"
+          loading="eager"
+          fetchpriority="high"
+          decoding="async"
+        />
+      </figure>
+
+      <p class="contact-hero__caption">{contact.photoCaption[locale]}</p>
+    </div>
+  </div>
+</section>
+
+<!--
+  02 · DATOS Y FORMULARIO — a la izquierda, con icono, cómo contactar; a la
+  derecha, la carta del formulario.
+-->
+<section class="section section--paper contact-main">
+  <div class="container">
+    <div class="contact-main__grid">
+      <div class="contact-details">
+        <div class="contact-details__brand">
+          <BrandLogo locale={locale} class="contact-details__logo" />
+        </div>
+
+        <ul class="contact-details__list">
+          {
+            detailItems.map((item) => (
+              <li class="contact-detail">
+                <Icon name={item.icon} class="contact-detail__icon" />
+                <div class="contact-detail__body">
+                  <span class="contact-detail__value">
+                    {item.icon === 'phone' ? (
+                      <a href={`tel:${company.phoneE164}`}>{phoneDisplay(locale)}</a>
+                    ) : item.icon === 'mail' ? (
+                      <a href={`mailto:${company.contactEmail}`}>{item.value[locale]}</a>
+                    ) : (
+                      item.value[locale]
+                    )}
+                  </span>
+                  <span class="contact-detail__note">{item.note[locale]}</span>
+                </div>
+              </li>
+            ))
+          }
+        </ul>
+
+        <div class="contact-details__whatsapp">
+          <div class="contact-detail">
+            <Icon name="chat" class="contact-detail__icon" />
+            <div class="contact-detail__body">
+              <span class="contact-detail__value">
+                <a href={whatsappUrl('')} target="_blank" rel="noopener">
+                  {contact.contactBlock.whatsapp.value[locale]}
+                </a>
+              </span>
+              <span class="contact-detail__note">
+                {contact.contactBlock.whatsapp.note[locale]}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <p class="contact-details__links">
+          <a class="link-arrow" href={company.mapUrl} target="_blank" rel="noopener">
+            {contact.contactBlock.mapLabel[locale]}
+          </a>
+          <a class="link-arrow" href={company.facebookUrl} target="_blank" rel="noopener me">
+            {contact.contactBlock.facebookLabel[locale]}
+          </a>
+        </p>
+      </div>
+
+      <div class="contact-form">
+        <div class="contact-form__card">
+          <p class="kicker">{contact.form.kicker[locale]}</p>
+          <h2 class="contact-form__title">{contact.form.title[locale]}</h2>
+
+          <QuoteForm locale={locale} context="contact" intro={contact.form.lead[locale]} />
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!--
+  03 · LOS TRES PASOS — banda clara con filete arriba, número en serif
+  grande y filete vertical entre pasos.
+-->
+<section class="section section--paper contact-steps">
+  <div class="container">
+    <ol class="contact-steps__list">
+      {
+        contact.steps.items.map((step, index) => (
+          <li class="contact-step">
+            <span class="contact-step__num" aria-hidden="true">
+              {index + 1}.
+            </span>
+            <div class="contact-step__body">
+              <h3 class="contact-step__title">{step.title[locale]}</h3>
+              <p class="contact-step__text">{step.text[locale]}</p>
+            </div>
+          </li>
+        ))
+      }
+    </ol>
+  </div>
+</section>
+
+<!-- 04 · FAQ -->
+<section class="section section--cream">
+  <div class="container">
+    <SectionHead
+      kicker={t(locale, 'seo.faqKicker')}
+      title={t(locale, 'contact.faqTitle')}
+      split
+    />
+    <FaqList locale={locale} />
+  </div>
+</section>
+
+<!--
+  05 · CIERRE — la madera a la izquierda y la llamada a la derecha, en el
+  centro, como en la maqueta.
+-->
+<section class="section contact-closing">
+  <figure class="contact-closing__figure">
+    <Image
+      src={image(contact.closing.photo.src)}
+      alt={contact.closing.photo.alt[locale]}
+      widths={[480, 720, 960]}
+      sizes="(min-width: 62rem) 30vw, 0px"
+      loading="lazy"
+      decoding="async"
+    />
+  </figure>
+
+  <div class="contact-closing__body">
+    <h2 class="contact-closing__title">{contact.closing.title[locale]}</h2>
+    <p class="contact-closing__phone">
+      {contact.closing.phoneLabel[locale]}{' '}
+      <a href={`tel:${company.phoneE164}`}>{phoneDisplay(locale)}</a>
+    </p>
+    <p class="contact-closing__text">{contact.closing.text[locale]}</p>
+  </div>
+</section>

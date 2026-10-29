@@ -1,0 +1,23 @@
+---
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import DeliveryView from '../../../views/DeliveryView.astro';
+
+const locale = 'de' as const;
+const path = '/de/lieferung/';
+
+const alternates = {
+  pl: '/dostawa/',
+  en: '/en/delivery/',
+  de: '/de/lieferung/',
+} as Partial<Record<typeof locale, string>>;
+---
+
+<BaseLayout
+  locale={locale}
+  path={path}
+  title="Lieferung und Zahlung — Eichenleisten"
+  description="Eichen-Abschlussleisten per Kurier innerhalb Polens, Verpackung passend zur Bestellung, Lieferzeit im Angebot. Außerhalb Polens einzeln kalkuliert."
+  alternates={alternates}
+>
+  <DeliveryView locale={locale} />
+</BaseLayout>

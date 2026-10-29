@@ -1,0 +1,46 @@
+---
+/**
+ * Dane strukturalne `BreadcrumbList` dla wyszukiwarek.
+ *
+ * Klasyczny pasek „okruszków" został usunięty z interfejsu — na każdej
+ * stronie zostawia pusty pasek pod nagłówkiem, który niczego nie wnosi.
+ * Ścieżka nadal jest w kodzie: Google wyświetla ją pod wynikiem i podnosi
+ * CTR, a użytkownik nie widzi dodatkowej nawigacji.
+ *
+ * Komponent zachowuje ten sam interfejs (`items` + `locale`), więc strony
+ * nie wymagają zmian.
+ */
+import type { Locale } from '../i18n';
+import { SCHEMA_CONTEXT } from '../content/schema';
+
+interface Crumb {
+  label: string;
+  href?: string;
+}
+
+interface Props {
+  items: Crumb[];
+  locale: Locale;
+}
+
+const { items } = Astro.props;
+
+const site = Astro.site ?? new URL('https://doors-oblogi.pl');
+const ld = {
+  /**
+   * `@context` propio: este bloque se emite suelto, fuera del `@graph` del
+   * layout, y sin contexto el validador de datos estructurados lo marca
+   * como incompleto (JSON-LD 1.1 no asume schema.org).
+   */
+  '@context': SCHEMA_CONTEXT,
+  '@type': 'BreadcrumbList',
+  itemListElement: items.map((item, index) => ({
+    '@type': 'ListItem',
+    position: index + 1,
+    name: item.label,
+    ...(item.href ? { item: new URL(item.href, site).href } : {}),
+  })),
+};
+---
+
+<script type="application/ld+json" set:html={JSON.stringify(ld)} is:inline />

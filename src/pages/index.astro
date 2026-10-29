@@ -1,0 +1,44 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import HomeView from '../views/HomeView.astro';
+import { home } from '../content/pages';
+import { heroImage } from '../content/hero';
+import { definedTermSchema } from '../content/schema';
+
+const locale = 'pl' as const;
+const path = '/';
+
+const alternates = { pl: '/', en: '/en/', de: '/de/' } as Partial<Record<typeof locale, string>>;
+
+/**
+ * Hero jest elementem LCP — pobieramy go z wyprzedzeniem.
+ *
+ * UWAGA: to musi być DOKŁADNIE ten sam plik, którego używa `HomeView`
+ * (`hero-sufit-dab.jpg`). Wcześniej preload wskazywał na
+ * `hero-oblog-debowy.jpg` w 960 px: przeglądarka pobierała jeden plik,
+ * a LCP i tak ładował drugi — marnując przepustowość.
+ *
+ * `srcset`/`sizes` pochodzą z tego samego generatora co znacznik `<img>`
+ * hero (`src/content/hero.ts`). Gdyby oba opisywały różne pliki, preload
+ * zapowiedziałby jedną wersję, a przeglądarka pobrałaby inną — i LCP
+ * znowu płaciłby za podwójne pobranie.
+ */
+const heroAsset = await heroImage();
+---
+
+<BaseLayout
+  locale={locale}
+  path={path}
+  title={home.seo.title[locale]}
+  description={home.seo.description[locale]}
+  alternates={alternates}
+  jsonLd={[definedTermSchema(locale)]}
+  preloadImage={{
+    href: heroAsset.src,
+    type: 'image/webp',
+    srcset: heroAsset.srcset,
+    sizes: heroAsset.sizes,
+  }}
+>
+  <HomeView locale={locale} />
+</BaseLayout>
