@@ -15,7 +15,7 @@ pracowni obróbki naturalnego dębu w Słoneczniku k. Olsztyna.
 | Pieza | Elección | Motivo |
 |---|---|---|
 | Framework | Astro 7 | HTML estático en el servidor; el JS entra sólo donde aporta (islas) |
-| Interacción | React (`@astrojs/react`) + GSAP 3 | Islas con estado real y movimiento de calidad; presupuesto ≤ 60 KB gzip (ver regla 12 de `AGENTS.md`) |
+| Interacción | GSAP 3 + JS propio | Movimiento ambiental en la galería de la home (`transform`/`opacity`, respeta `prefers-reduced-motion`). **0 islas React**: `@astrojs/react` no está instalado y no hace falta. Presupuesto ≤ 60 KB gzip por página (ver regla 12 de `AGENTS.md`) |
 | Estilos | CSS propio (`src/styles/global.css`) | Sin framework utility: control total y sin "¿por qué Tailwind?" |
 | Tipografías | Fraunces (titulares) + Archivo (texto), autoalojadas | Sin peticiones a terceros, sin GDPR, sin CLS |
 | Imágenes | `astro:assets` + sharp | WebP/AVIF, `srcset`, dimensiones conocidas (layout shift 0) |
@@ -26,7 +26,7 @@ pracowni obróbki naturalnego dębu w Słoneczniku k. Olsztyna.
 ```bash
 npm install
 npm run dev      # desarrollo en http://localhost:4330
-npm run build    # genera dist/ (40 páginas)
+npm run build    # genera dist/ (40 páginas: 39 indexadas + 404)
 npm run preview  # sirve dist/ tal cual se publicará
 npm run verify   # comprobadores sobre dist/ (metadatos, JSON-LD, contraste, assets)
 ```
@@ -39,22 +39,38 @@ y, si no, cae a WhatsApp/mailto. Estado actual y plan de mejoras: `docs/INFORME-
 ```
 src/
   assets/images/        fotos reales del cliente (descargadas de su Facebook)
-  components/           Header, Footer, ProductCard, FaqList, QuoteForm, Breadcrumbs,
-                        SectionHead, CtaBand, Flag (banderas SVG)
+  components/           BrandLogo, ContactLinks, CtaBand, FaqList, Flag, Footer,
+                        FormField, Header, HowItWorks, Icon, LocationMap,
+                        ObjectionList, PriceInfo, ProductCard, ProofFigure,
+                        QuoteForm, SectionCta, SectionHead, StickyCta,
+                        TermsTable, TrustBar, Breadcrumbs (sólo JSON-LD)
   content/              ← TODO EL CONTENIDO VIVE AQUÍ
     company.ts          datos de empresa (teléfono, ubicación, email)
-    products.ts         catálogo: copy, specs, SEO y keywords por idioma
-    pages.ts            copy de home / about / galería / presupuesto / contacto + FAQ
+    contact.ts          copy de /kontakt/ (PL/EN/DE)
+    definitions.ts      definiciones compartidas de material
+    funnel.ts           embudo A/B del formulario
+    hero.ts             copy del hero de la home
+    home-sections.ts    secciones de la home
     images.ts           mapa nombre → asset importado
-    schema.ts           schema.org (Product, BreadcrumbList)
+    keywords.ts         keywords por idioma y ruta
+    pages.ts            copy de home / about / galería / presupuesto / contacto + FAQ
+    pricing.ts          copy de precios (cennik)
+    products.ts         catálogo: copy, specs, SEO y keywords por idioma
+    routes-map.json     mapa de rutas → hreflang + sitemap + 301
+    schema.ts           schema.org (Product, BreadcrumbList, FAQPage, LocalBusiness)
+    sedo.ts             copy del bloque de techos (SEDO)
+    technical.ts        datos técnicos del material
+    terms.ts            condiciones de pedido y entrega
+    trade.ts            copy de /dla-firm/
   i18n/
     index.ts            idiomas, rutas y slugs traducidos
     ui.ts               etiquetas de interfaz en PL/EN/DE
   layouts/BaseLayout.astro   head, canonical, hreflang, OG, JSON-LD
-  pages/                21 rutas + 404 (slugs traducidos por idioma)
+  pages/                39 rutas indexadas + 404 + 10 stubs 301 (slugs por idioma)
+  scripts/motion.ts     GSAP: galería de la home (transform/opacity, reduced-motion)
   styles/global.css     sistema de diseño
-  views/                HomeView, CatalogView, ProductView, AboutView,
-                        GalleryView, QuoteView, ContactView
+  views/                HomeView, CatalogView, ProductView, AboutView, GalleryView,
+                        QuoteView, TradeView, ContactView, DeliveryView, PrivacyView
 docs/
   agent-reports/        informes de los agentes de SEO / auditoría / diseño
   CMS-INTEGRATION.md    guía para conectar con el CMS SEO Grow
@@ -66,7 +82,10 @@ docs/
 |---|---|---|
 | `/` | `/en/` | `/de/` |
 | `/produkty/` | `/en/products/` | `/de/produkte/` |
-| `/produkty/oblog-debowy-ciety/` | `/en/products/cut-oak-lintel/` | `/de/produkte/geschnittenes-eichen-oblag/` |
+| `/produkty/oblog-debowy-ciety/` | `/en/products/oak-trim-battens/` | `/de/produkte/eichen-abschlussleiste-auf-mass/` |
+| `/produkty/oblog-debowy-wedzony/` | `/en/products/smoked-oak-trim/` | `/de/produkte/geraeucherte-eichen-abschlussleiste/` |
+| `/produkty/lamela-debowa/` | `/en/products/oak-battens/` | `/de/produkte/eichenlamelle/` |
+| `/produkty/panele-sufitowe-i-scienne/` | `/en/products/oak-ceiling-and-wall-panels/` | `/de/produkte/eichen-decken-und-wandpaneele/` |
 | `/o-nas/` | `/en/about/` | `/de/ueber-uns/` |
 | `/realizacje/` | `/en/gallery/` | `/de/galerie/` |
 | `/cennik/` | `/en/price-list/` | `/de/preisliste/` |
@@ -77,6 +96,10 @@ docs/
 
 Los slugs están traducidos, no transliterados: cada idioma tiene su propia URL y su propio
 `hreflang`. Es lo que Google premia y lo que un cliente internacional espera.
+
+Los slugs antiguos (p. ej. `/en/products/cut-oak-lintel/`, `/de/projekte/`) responden con un
+stub **301** hacia la ruta nueva: `meta refresh` + `canonical` + `noindex`, generados por
+`redirects` en `astro.config.mjs` y excluidos del sitemap.
 
 ## Reglas del proyecto
 
